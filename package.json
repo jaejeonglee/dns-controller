@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/jaejeonglee/dns-controller#readme",
   "dependencies": {
+    "@fastify/static": "^8.2.0",
     "axios": "^1.12.2",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.1"
