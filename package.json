@@ -1,0 +1,28 @@
+{
+  "name": "dns-controller",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaejeonglee/dns-controller.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/jaejeonglee/dns-controller/issues"
+  },
+  "homepage": "https://github.com/jaejeonglee/dns-controller#readme",
+  "dependencies": {
+    "axios": "^1.12.2",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "pino-pretty": "^13.1.2"
+  }
+}
