@@ -1,4 +1,5 @@
-// server.js
+const path = require("path");
+
 const fastify = require("fastify")({
   logger: {
     transport: {
@@ -10,8 +11,14 @@ const fastify = require("fastify")({
     },
   },
 });
-const config = require("./config");
+const config = require("./configs/index");
 const cfService = require("./services/cloudflare");
+
+// static file
+fastify.register(require("@fastify/static"), {
+  root: path.join(__dirname, "public"),
+  prefix: "/",
+});
 
 // POST /api/subdomains
 fastify.post("/api/subdomains", async (request, reply) => {
