@@ -13,6 +13,7 @@ const fastify = require("fastify")({
 });
 const config = require("./configs/index");
 const cfService = require("./services/cloudflare");
+const fileDbService = require("./services/fileDataBase");
 
 // static file
 fastify.register(require("@fastify/static"), {
@@ -22,30 +23,53 @@ fastify.register(require("@fastify/static"), {
 
 // POST /api/subdomains
 fastify.post("/api/subdomains", async (request, reply) => {
-  const { subdomain, ip } = request.body;
-  if (!subdomain || !ip) {
-    return reply.code(400).send({ error: "subdomain and ip are required" });
+  const { subdomain, ip, password } = request.body;
+
+  if (!subdomain || !ip || !password) {
+    return reply
+      .code(400)
+      .send({ error: "subdomain, ip, password are required" });
   }
 
   try {
-    const existingRecord = await cfService.findDnsRecord(subdomain);
-
-    if (existingRecord) {
-      fastify.log.warn(`Subdomain already exists: ${subdomain}`);
-      return reply.code(409).send({ error: "Already exist. Try another one." });
+    // 1. Cloudflare에 이미 있는지 확인
+    const existingCf = await cfService.findDnsRecord(subdomain);
+    if (existingCf) {
+      return reply
+        .code(409)
+        .send({ error: "이미 사용 중인 서브도메인입니다." });
     }
 
+    // 우리 db.json에도 있는지 확인 (CF와 동기화가 깨졌을 경우 대비)
+    const existingDb = await fileDbService.findRecord(subdomain);
+    if (existingDb) {
+      return reply
+        .code(409)
+        .send({ error: "이미 사용 중인 서브도메인입니다." });
+    }
+
+    // 2. Cloudflare에 생성
     const newRecord = await cfService.createDnsRecord(subdomain, ip);
-    fastify.log.info(`New subdomain created: ${newRecord.name}`);
+    fastify.log.info(`New subdomain created on Cloudflare: ${newRecord.name}`);
+
+    // 3. 파일 DB에 저장
+    await fileDbService.addRecord({
+      subdomain: subdomain,
+      ip: ip,
+      password: password,
+      cloudflare_id: newRecord.id,
+    });
 
     return reply.code(201).send({
       success: true,
       domain: newRecord.name,
       ip: newRecord.content,
+      message:
+        "Success! Please save your password. You will need it to modify or delete this.",
     });
   } catch (error) {
     fastify.log.error(error, "Failed to process subdomain creation");
-    return reply.code(500).send({ error: "Internal Server Error" });
+    return reply.code(500).send({ error: "서버 처리 중 오류가 발생했습니다." });
   }
 });
 

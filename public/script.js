@@ -14,6 +14,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const subdomain = document.getElementById("subdomain").value;
     const ip = document.getElementById("ip").value;
+    const password = document.getElementById("password").value;
 
     try {
       const response = await fetch("/api/subdomains", {
@@ -21,7 +22,7 @@ document.addEventListener("DOMContentLoaded", () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ subdomain, ip }),
+        body: JSON.stringify({ subdomain, ip, password }),
       });
 
       const data = await response.json();
