@@ -47,12 +47,14 @@ body {
 .top-indicators {
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 16px;
 }
 
-.domain-indicator {
+.domain-indicator,
+.donate-button {
   font-size: 0.85rem;
   font-weight: 500;
   color: rgba(31, 27, 77, 0.65);
@@ -63,7 +65,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-left: auto;
+  min-height: 32px;
 }
 
 .domain-indicator::before {
@@ -73,6 +75,17 @@ body {
   border-radius: 50%;
   background: linear-gradient(135deg, #ffa4d2, #ff7bd5);
   box-shadow: 0 0 8px rgba(255, 138, 208, 0.8);
+}
+
+.donate-button {
+  text-decoration: none;
+  color: rgba(31, 27, 77, 0.75);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.donate-button:hover {
+  background: rgba(90, 77, 240, 0.1);
+  color: rgba(31, 27, 77, 0.85);
 }
 
 header {
