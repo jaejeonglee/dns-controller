@@ -94,6 +94,12 @@
       </div>
     </div>
     <div class="container">
+      <nav class="site-nav" aria-label="Primary">
+        <a href="#intro">Overview</a>
+        <a href="#guide">Guide</a>
+        <a href="#use-cases">Use Cases</a>
+        <a href="#trust">Trust & Support</a>
+      </nav>
       <div class="top-indicators">
         <div
           id="domain-count"
@@ -207,8 +213,172 @@
           </div>
         </form>
       </main>
-
-      <footer></footer>
+      <section id="intro" class="content-section">
+        <h2>What We Deliver</h2>
+        <p>
+          The officials.ltd Domain Controller helps developers, makers, and
+          communities launch projects on the web in minutes. Instead of hand
+          editing DNS zone files, you claim and manage subdomains through a
+          guided interface backed by a Fastify service layer.
+        </p>
+        <ul class="feature-list">
+          <li>
+            Speed: claim a custom <code>.officials.ltd</code> subdomain in under
+            three seconds.
+          </li>
+          <li>
+            Control: connect or swap IP targets without touching registrar
+            dashboards.
+          </li>
+          <li>
+            Security: keep ownership safe with password-only access to updates
+            and deletion.
+          </li>
+          <li>
+            Visibility: observability hooks watch each change so your records
+            stay healthy.
+          </li>
+        </ul>
+      </section>
+      <section id="guide" class="content-section">
+        <h2>Guide</h2>
+        <h3>Before You Start</h3>
+        <ol class="step-list">
+          <li>An IPv4 address for the service you want to expose.</li>
+          <li>
+            A quick way to test DNS propagation, such as ping or a health
+            endpoint.
+          </li>
+          <li>
+            A management password (minimum eight characters recommended) to
+            confirm future edits.
+          </li>
+        </ol>
+        <h3>How It Works</h3>
+        <div class="step-cards">
+          <article>
+            <h4>1. Check availability</h4>
+            <p>
+              Enter your desired subdomain and select <strong>Check</strong>.
+              The tool validates formatting and queries availability in real
+              time. Allowed characters are lowercase letters, numbers, and
+              single hyphens between characters.
+            </p>
+          </article>
+          <article>
+            <h4>2. Create with IP and password</h4>
+            <p>
+              Provide the IPv4 address and a password. The platform writes the
+              DNS A record immediately and queues it for global propagation,
+              which typically completes within one to three minutes.
+            </p>
+          </article>
+          <article>
+            <h4>3. Manage with confidence</h4>
+            <p>
+              Authenticate with the same password whenever you need to update or
+              remove the record. Every change is logged for auditing, and you
+              can rotate IP targets as often as required.
+            </p>
+          </article>
+        </div>
+        <p class="tip">
+          Default TTL is 300 seconds. Edge locations sync through Cloudflare, so
+          most visitors see updates nearly instantly. Contact the team if you
+          require custom TTL or bulk operations.
+        </p>
+      </section>
+      <section id="use-cases" class="content-section">
+        <h2>Use Cases</h2>
+        <div class="use-case-grid">
+          <article>
+            <h3>Side projects</h3>
+            <p>
+              Launch a hackathon MVP or weekend experiment without buying a
+              domain. Point the record at your Render, Vercel, or home lab node
+              to collect feedback fast.
+            </p>
+          </article>
+          <article>
+            <h3>Community services</h3>
+            <p>
+              Student clubs and open source communities issue branded subdomains
+              to members while retaining central control. No separate DNS
+              infrastructure required.
+            </p>
+          </article>
+          <article>
+            <h3>Time-bound campaigns</h3>
+            <p>
+              Marketing teams spin up microsites for events or seasonal offers.
+              When the campaign ends, remove the record with one click and reuse
+              the name later.
+            </p>
+          </article>
+        </div>
+        <p>
+          The service runs on a Fastify backend with daily backups and a 99.9
+          percent availability target. Monitoring keeps latency low even during
+          high demand.
+        </p>
+      </section>
+      <section id="trust" class="content-section">
+        <h2>Trust & Support</h2>
+        <dl class="info-list">
+          <div>
+            <dt>Data handling</dt>
+            <dd>
+              Passwords are stored as salted hashes. We retain subdomain and IP
+              history only to operate the platform and purge inactive entries on
+              a rolling basis. Review the current privacy statement any time via
+              <code>/api/policies/privacy</code> while we finalize the hosted
+              policy page.
+            </dd>
+          </div>
+          <div>
+            <dt>Support</dt>
+            <dd>
+              Reach us at
+              <a href="https://t.me/+yvrIFDbssJ0wNDJl">ⓣTelegram</a>
+              for help, partnership discussions, or bulk provisioning. We
+              operate a Discord community for live Q and A and provide service
+              credits if uptime commitments are missed.
+            </dd>
+          </div>
+        </dl>
+        <div class="support-cta">
+          <h3>Support the project</h3>
+          <p>
+            Keeping the service free means infrastructure and monitoring costs
+            come out of pocket. If it helps your projects, consider buying a
+            coffee or sending crypto to keep the lights on.
+          </p>
+          <div class="support-actions">
+            <a
+              class="donate-button"
+              href="https://www.buymeacoffee.com/helpmeup"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Buy me a coffee 👍</a
+            >
+            <div class="wallet-card">
+              <span class="wallet-label">or... Crypto wallet</span>
+              <code class="wallet-address"
+                >0x470bb4dFaa90Ad94597097c49A6b77E5A0E2B8A2</code
+              >
+            </div>
+          </div>
+        </div>
+      </section>
+      <footer>
+        &copy; 2025 officials.ltd |
+        <a
+          href="https://officials.ltd/api/policies/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Privacy Policy</a
+        >
+      </footer>
     </div>
   </body>
 </html>
