@@ -1,11 +1,12 @@
 const path = require("path");
 
 const fastify = require("fastify")({
+  disableRequestLogging: true,
+  trustProxy: true,
   logger: {
     transport: {
       target: "pino-pretty",
       options: {
-        translateTime: "SYS:yyyy-mm-dd HH:MM:ss",
         ignore: "pid,hostname",
       },
     },
@@ -14,6 +15,7 @@ const fastify = require("fastify")({
 const config = require("./configs/index");
 const cfService = require("./services/cloudflare");
 const fileDbService = require("./services/fileDataBase");
+const privacyPolicy = require("./configs/privacyPolicy");
 
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const isValidSubdomain = (name) => SUBDOMAIN_REGEX.test(name);
@@ -33,6 +35,32 @@ fastify.get("/api/stats/active-domains", async (request, reply) => {
     fastify.log.error(error, "Failed to load active domain stats");
     return reply.code(500).send({ error: "Error loading active domains" });
   }
+});
+
+// GET /api/policies/privacy
+fastify.get("/api/policies/privacy", async (request, reply) => {
+  try {
+    return reply
+      .code(200)
+      .header("Cache-Control", "public, max-age=3600")
+      .send(privacyPolicy);
+  } catch (error) {
+    fastify.log.error(error, "Failed to load privacy policy");
+    return reply.code(500).send({ error: "Error loading privacy policy" });
+  }
+});
+
+fastify.addHook("onResponse", (request, reply, done) => {
+  const forwarded = request.headers["x-forwarded-for"];
+  const remoteAddress =
+    request.headers["cf-connecting-ip"] ||
+    (forwarded ? forwarded.split(",")[0].trim() : null) ||
+    request.headers["x-real-ip"] ||
+    request.raw.socket?.remoteAddress ||
+    request.ip;
+  const url = request.raw.url;
+  fastify.log.info(` ${url} | ${remoteAddress}`);
+  done();
 });
 
 // GET /api/subdomains/:subdomain
