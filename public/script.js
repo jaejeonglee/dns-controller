@@ -20,7 +20,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const domainIndicator = document.getElementById("domain-count");
   const DEFAULT_MESSAGE =
     (messageBox && messageBox.dataset.defaultMessage) ||
-    "Get your free custom subdomain instantly.";
+    "Get your free custom domain instantly.";
+
+  const CURRENT_DOMAIN = window.location.hostname.replace("www.", "");
 
   const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
   const IP_REGEX = /^\d{1,3}(?:\.\d{1,3}){3}$/;
@@ -47,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     subdomainInput.value = rawValue;
 
     if (!rawValue) {
-      showMessage("Please enter a subdomain.", "error");
+      showMessage("Please enter a domain.", "error");
       return;
     }
 
@@ -62,13 +64,15 @@ document.addEventListener("DOMContentLoaded", () => {
     hideMessage();
     setButtonLoading(checkBtn, "Checking...");
 
-    fetch(`/api/subdomains/${encodeURIComponent(rawValue)}`)
+    fetch(
+      `/api/subdomains/${encodeURIComponent(
+        rawValue
+      )}?domain=${encodeURIComponent(CURRENT_DOMAIN)}`
+    )
       .then(async (response) => {
         if (!response.ok) {
           const data = await response.json().catch(() => ({}));
-          throw new Error(
-            data.error || "Failed to check subdomain availability."
-          );
+          throw new Error(data.error || "Failed to check domain availability.");
         }
         return response.json();
       })
@@ -145,6 +149,7 @@ document.addEventListener("DOMContentLoaded", () => {
         subdomain: state.subdomain,
         ip,
         password,
+        domain: CURRENT_DOMAIN,
       }),
     })
       .then(async (response) => {
@@ -204,7 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, domain: CURRENT_DOMAIN }),
     })
       .then(async (response) => {
         const data = await response.json();
@@ -257,7 +262,11 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ip: newIp, password: state.password }),
+      body: JSON.stringify({
+        ip: newIp,
+        password: state.password,
+        domain: CURRENT_DOMAIN,
+      }),
     })
       .then(async (response) => {
         const data = await response.json();
@@ -302,7 +311,10 @@ document.addEventListener("DOMContentLoaded", () => {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ password: state.password }),
+      body: JSON.stringify({
+        password: state.password,
+        domain: CURRENT_DOMAIN,
+      }),
     })
       .then(async (response) => {
         const data = await response.json();

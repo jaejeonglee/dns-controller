@@ -2,11 +2,11 @@ module.exports = {
   version: "1.0.0",
   updatedAt: "2025-01-15",
   contact: {
-    email: "hello@officials.ltd",
-    dataProtectionOfficer: "officials.ltd Privacy Team",
+    email: "hello@sitey.one",
+    dataProtectionOfficer: "sitey.one Privacy Team",
   },
   scope: [
-    "This policy applies to the officials.ltd Domain Controller web application and related APIs.",
+    "This policy applies to the sitey.one Domain Controller web application and related APIs.",
     "It covers how we collect, use, and store data that is required to deliver the service.",
   ],
   sections: [
@@ -59,7 +59,7 @@ module.exports = {
       title: "Your choices and rights",
       statements: [
         "You can update or delete your DNS record at any time using the management password.",
-        "You may request a copy of stored data by emailing hello@officials.ltd from the address associated with your record.",
+        "You may request a copy of stored data by emailing hello@sitey.one from the address associated with your record.",
         "If you believe we hold data in error, contact us and we will review and respond within 30 days.",
       ],
     },

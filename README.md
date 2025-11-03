@@ -10,7 +10,7 @@ Free subdomain service for the everyone. This project bundles a landing page and
 
 ## How It Works
 
-1. You check if a subdomain like `demo.officials.ltd` is free.
+1. You check if a subdomain like `demo.sitey.one` is free.
 2. When you create it, the app writes an A record on Cloudflare for that subdomain so it resolves to your server's IP.
 3. The same information is stored in a local JSON file together with the password you provided (stored as plain text today - treat it as a shared secret).
 4. Whenever you change or delete the subdomain, the app first confirms the password against the stored entry and then updates or removes the matching A record on Cloudflare.
