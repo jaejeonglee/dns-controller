@@ -45,33 +45,27 @@ async function domainRoutes(fastify, options) {
     }
 
     try {
-      const results = [];
-      // ⭐️ Use fastify.mysql instead of fileDbService because passwords live in the DB
-      const connection = await fastify.mysql.getConnection();
-      try {
-        await Promise.all(
-          MANAGED_DOMAINS.map(async (domain) => {
-            const isTakenInBind = await bindService.findDnsRecord(
-              subdomain,
-              domain
-            );
+      const results = await Promise.all(
+        MANAGED_DOMAINS.map(async (domain) => {
+          const isTakenInBind = await bindService.findDnsRecord(
+            subdomain,
+            domain
+          );
 
-            const [rows] = await connection.execute(
-              "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain = ? LIMIT 1",
-              [subdomain, domain]
-            );
-            const isTakenInDb = rows.length > 0;
+          const [rows] = await fastify.mysql.execute(
+            "SELECT 1 FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id WHERE s.subdomain = ? AND m.domain_name = ? LIMIT 1",
+            [subdomain, domain]
+          );
+          const isTakenInDb = rows.length > 0;
 
-            results.push({
-              domain: domain,
-              fullSubdomain: `${subdomain}.${domain}`,
-              isAvailable: !isTakenInBind && !isTakenInDb,
-            });
-          })
-        );
-      } finally {
-        connection.release();
-      }
+          return {
+            domain,
+            fullSubdomain: `${subdomain}.${domain}`,
+            isAvailable: !isTakenInBind && !isTakenInDb,
+          };
+        })
+      );
+
       return reply.code(200).send({ results });
     } catch (error) {
       fastify.log.error(error, "Failed to check multi-domain availability");
