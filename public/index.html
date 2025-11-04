@@ -59,11 +59,11 @@
               id="subdomain"
               placeholder="your desired domain"
               required
-              pattern="^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+              pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
               autocomplete="off"
               spellcheck="false"
               autocapitalize="none"
-              title="Subdomain can contain lowercase letters, numbers, and hyphens."
+              title="Domain names can contain lowercase letters, numbers, and hyphens."
             />
             <button
               type="submit"
@@ -143,7 +143,7 @@
                 autocomplete="off"
                 spellcheck="false"
                 inputmode="decimal"
-                pattern="^\\d{1,3}(?:\\.\\d{1,3}){3}$"
+                pattern="^(\\d{1,3}\\.){3}\\d{1,3}$"
               />
             </div>
             <button type="submit" class="primary-button" id="create-modal-submit">
