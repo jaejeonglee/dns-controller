@@ -352,24 +352,113 @@ function initializeDashboardPage() {
   renderFooter();
 
   const dashboardList = document.getElementById("dashboard-list");
-  const updateSection = document.getElementById("update-section");
-  const updateDomainName = document.getElementById("update-domain-name");
-  const updateIpInput = document.getElementById("update-ip");
-  const updateBtn = document.getElementById("update-btn");
-  const deleteBtn = document.getElementById("delete-btn");
-  const cancelUpdateBtn = document.getElementById("cancel-update-btn");
+  if (!dashboardList) return;
 
-  function resetUpdateSection() {
-    if (!updateSection) return;
-    updateSection.dataset.subdomain = "";
-    updateSection.dataset.domain = "";
-    if (updateDomainName) updateDomainName.textContent = "";
-    if (updateIpInput) updateIpInput.value = "";
-    setHidden(updateSection, true);
+  function createDashboardItem(item, index) {
+    const wrapper = document.createElement("article");
+    wrapper.className = "dashboard-item";
+    wrapper.dataset.subdomain = item.subdomain;
+    wrapper.dataset.domain = item.domain_name;
+
+    const header = document.createElement("button");
+    header.type = "button";
+    header.className = "dashboard-item-header";
+    header.setAttribute("aria-expanded", "false");
+
+    const headerContent = document.createElement("div");
+    headerContent.className = "dashboard-item-title";
+
+    const domainName = document.createElement("span");
+    domainName.className = "domain-name";
+    domainName.textContent = `${item.subdomain}.${item.domain_name}`;
+
+    const ipAddress = document.createElement("span");
+    ipAddress.className = "ip-address";
+    ipAddress.textContent = item.ip;
+
+    headerContent.appendChild(domainName);
+    headerContent.appendChild(ipAddress);
+
+    const icon = document.createElement("span");
+    icon.className = "dashboard-item-chevron";
+    icon.setAttribute("aria-hidden", "true");
+
+    header.appendChild(headerContent);
+    header.appendChild(icon);
+
+    const detail = document.createElement("div");
+    detail.className = "dashboard-item-detail";
+    detail.hidden = true;
+
+    const field = document.createElement("div");
+    field.className = "dashboard-item-field";
+
+    const ipLabel = document.createElement("label");
+    const inputId = `dashboard-ip-${index}`;
+    ipLabel.setAttribute("for", inputId);
+    ipLabel.textContent = "IPv4 address";
+
+    const ipInput = document.createElement("input");
+    ipInput.type = "text";
+    ipInput.id = inputId;
+    ipInput.className = "dashboard-ip-input";
+    ipInput.value = item.ip || "";
+    ipInput.placeholder = "203.0.113.10";
+    ipInput.autocomplete = "off";
+    ipInput.inputMode = "decimal";
+
+    field.appendChild(ipLabel);
+    field.appendChild(ipInput);
+
+    const actions = document.createElement("div");
+    actions.className = "dashboard-item-actions";
+
+    const saveButton = document.createElement("button");
+    saveButton.type = "button";
+    saveButton.className = "primary-button";
+    saveButton.dataset.action = "update";
+    saveButton.textContent = "Save changes";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "danger-button";
+    deleteButton.dataset.action = "delete";
+    deleteButton.textContent = "Remove domain";
+
+    actions.appendChild(saveButton);
+    actions.appendChild(deleteButton);
+
+    detail.appendChild(field);
+    detail.appendChild(actions);
+
+    wrapper.appendChild(header);
+    wrapper.appendChild(detail);
+
+    return wrapper;
+  }
+
+  function toggleDashboardItem(itemElement, forceExpand) {
+    if (!itemElement) return;
+    const header = itemElement.querySelector(".dashboard-item-header");
+    const detail = itemElement.querySelector(".dashboard-item-detail");
+    if (!header || !detail) return;
+
+    const shouldExpand =
+      typeof forceExpand === "boolean" ? forceExpand : detail.hidden;
+
+    detail.hidden = !shouldExpand;
+    header.setAttribute("aria-expanded", shouldExpand ? "true" : "false");
+    itemElement.classList.toggle("expanded", shouldExpand);
+
+    if (shouldExpand) {
+      const input = detail.querySelector(".dashboard-ip-input");
+      requestAnimationFrame(() => {
+        input?.focus();
+      });
+    }
   }
 
   async function fetchSubdomains() {
-    if (!dashboardList) return;
     dashboardList.innerHTML = "<p>Loading your domains…</p>";
 
     try {
@@ -387,24 +476,8 @@ function initializeDashboardPage() {
       }
 
       const fragment = document.createDocumentFragment();
-      items.forEach((item) => {
-        const row = document.createElement("div");
-        row.className = "dashboard-item";
-        row.innerHTML = `
-          <span class="domain-name">${item.subdomain}.${item.domain_name}</span>
-          <span class="ip-address">${item.ip}</span>
-          <button
-            type="button"
-            class="primary-button small"
-            data-action="edit"
-            data-subdomain="${item.subdomain}"
-            data-domain="${item.domain_name}"
-            data-ip="${item.ip}"
-          >
-            Edit
-          </button>
-        `;
-        fragment.appendChild(row);
+      items.forEach((item, index) => {
+        fragment.appendChild(createDashboardItem(item, index));
       });
 
       dashboardList.appendChild(fragment);
@@ -415,20 +488,26 @@ function initializeDashboardPage() {
     }
   }
 
-  async function handleUpdate() {
-    if (!updateSection || !updateIpInput || !updateBtn) return;
+  async function handleUpdate(button) {
+    if (!button) return;
 
-    const subdomain = updateSection.dataset.subdomain;
-    const domain = updateSection.dataset.domain;
-    const newIp = updateIpInput.value.trim();
+    const item = button.closest(".dashboard-item");
+    if (!item) return;
 
-    if (!subdomain || !domain) return;
+    const subdomain = item.dataset.subdomain;
+    const domain = item.dataset.domain;
+    const ipInput = item.querySelector(".dashboard-ip-input");
+    const newIp = ipInput?.value.trim();
+
+    if (!subdomain || !domain || !ipInput) return;
     if (!newIp || !IPV4_REGEX.test(newIp)) {
       showMessage("Enter a valid IPv4 address before saving.", "error");
+      ipInput.focus();
+      ipInput.select();
       return;
     }
 
-    setButtonLoading(updateBtn, "Updating…");
+    setButtonLoading(button, "Updating…");
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "PUT",
@@ -438,21 +517,27 @@ function initializeDashboardPage() {
         body: { ip: newIp, domain },
       });
 
-      showMessage("Domain updated successfully.", "success");
-      resetUpdateSection();
-      await fetchSubdomains();
+      showMessage(`Domain ${subdomain}.${domain} updated successfully.`, "success");
+
+      const ipDisplay = item.querySelector(".dashboard-item-header .ip-address");
+      if (ipDisplay) {
+        ipDisplay.textContent = newIp;
+      }
     } catch (error) {
       showMessage(error.message, "error");
     } finally {
-      clearButtonLoading(updateBtn);
+      clearButtonLoading(button);
     }
   }
 
-  async function handleDelete() {
-    if (!updateSection || !deleteBtn) return;
+  async function handleDelete(button) {
+    if (!button) return;
 
-    const subdomain = updateSection.dataset.subdomain;
-    const domain = updateSection.dataset.domain;
+    const item = button.closest(".dashboard-item");
+    if (!item) return;
+
+    const subdomain = item.dataset.subdomain;
+    const domain = item.dataset.domain;
     if (!subdomain || !domain) return;
 
     const confirmed = window.confirm(
@@ -460,7 +545,7 @@ function initializeDashboardPage() {
     );
     if (!confirmed) return;
 
-    setButtonLoading(deleteBtn, "Deleting…");
+    setButtonLoading(button, "Deleting…");
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "DELETE",
@@ -470,46 +555,37 @@ function initializeDashboardPage() {
         body: { domain },
       });
 
-      showMessage("Domain deleted successfully.", "success");
-      resetUpdateSection();
+      showMessage(`Domain ${subdomain}.${domain} deleted successfully.`, "success");
       await fetchSubdomains();
+      refreshDomainCount();
     } catch (error) {
       showMessage(error.message, "error");
     } finally {
-      clearButtonLoading(deleteBtn);
+      clearButtonLoading(button);
     }
   }
 
-  if (dashboardList) {
-    dashboardList.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-action='edit']");
-      if (!button || !updateSection || !updateDomainName || !updateIpInput)
-        return;
-
-      updateSection.dataset.subdomain = button.dataset.subdomain || "";
-      updateSection.dataset.domain = button.dataset.domain || "";
-      updateDomainName.textContent = `${button.dataset.subdomain}.${button.dataset.domain}`;
-      updateIpInput.value = button.dataset.ip || "";
-      setHidden(updateSection, false);
-      updateIpInput.focus();
-    });
-  }
-
-  if (cancelUpdateBtn) {
-    cancelUpdateBtn.addEventListener("click", () => {
-      resetUpdateSection();
-    });
-  }
-
-  if (updateBtn) {
-    updateBtn.addEventListener("click", handleUpdate);
-  }
-
-  if (deleteBtn) {
-    deleteBtn.addEventListener("click", handleDelete);
-  }
-
   fetchSubdomains();
+
+  dashboardList.addEventListener("click", (event) => {
+    const header = event.target.closest(".dashboard-item-header");
+    if (header) {
+      const item = header.closest(".dashboard-item");
+      toggleDashboardItem(item);
+      return;
+    }
+
+    const updateButton = event.target.closest("[data-action='update']");
+    if (updateButton) {
+      handleUpdate(updateButton);
+      return;
+    }
+
+    const deleteButton = event.target.closest("[data-action='delete']");
+    if (deleteButton) {
+      handleDelete(deleteButton);
+    }
+  });
 }
 
 function initializeLandingPage() {
