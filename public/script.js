@@ -1,442 +1,615 @@
-// public/script.js
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("subdomain-form");
-  const subdomainInput = document.getElementById("subdomain");
-  const createSection = document.getElementById("create-section");
-  const manageSection = document.getElementById("manage-section");
-  const updateSection = document.getElementById("update-section");
+const SUBDOMAIN_REGEX =
+  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const IPV4_REGEX =
+  /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
 
-  const createIpInput = document.getElementById("create-ip");
-  const createPasswordInput = document.getElementById("create-password");
-  const managePasswordInput = document.getElementById("manage-password");
-  const updateIpInput = document.getElementById("update-ip");
+function getAuthToken() {
+  return localStorage.getItem("token");
+}
 
-  const checkBtn = document.getElementById("check-btn");
-  const createBtn = document.getElementById("create-btn");
-  const manageCheckBtn = document.getElementById("manage-check-btn");
-  const updateBtn = document.getElementById("update-btn");
-  const deleteBtn = document.getElementById("delete-btn");
-  const messageBox = document.getElementById("form-message");
-  const domainIndicator = document.getElementById("domain-count");
-  const DEFAULT_MESSAGE =
-    (messageBox && messageBox.dataset.defaultMessage) ||
-    "Get your free custom domain instantly.";
-
-  const CURRENT_DOMAIN = window.location.hostname.replace("www.", "");
-
-  const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
-  const IP_REGEX = /^\d{1,3}(?:\.\d{1,3}){3}$/;
-
-  const state = {
-    subdomain: "",
-    exists: false,
-    verified: false,
-    currentIp: "",
-    password: "",
+async function apiFetch(url, options = {}) {
+  const config = { ...options };
+  config.headers = {
+    Accept: "application/json",
+    ...(options.headers || {}),
   };
 
-  form.addEventListener("submit", handleCheck);
-  subdomainInput.addEventListener("input", handleSubdomainChange);
-  createBtn.addEventListener("click", handleCreate);
-  manageCheckBtn.addEventListener("click", handleVerify);
-  updateBtn.addEventListener("click", handleUpdate);
-  deleteBtn.addEventListener("click", handleDelete);
+  if (config.body && typeof config.body !== "string") {
+    config.headers["Content-Type"] =
+      config.headers["Content-Type"] || "application/json";
+    config.body = JSON.stringify(config.body);
+  }
 
-  function handleCheck(event) {
-    event.preventDefault();
+  try {
+    const response = await fetch(url, config);
+    const contentType = response.headers.get("content-type") || "";
+    const isJson = contentType.includes("application/json");
+    const data = isJson ? await response.json() : null;
 
-    const rawValue = subdomainInput.value.trim().toLowerCase();
-    subdomainInput.value = rawValue;
-
-    if (!rawValue) {
-      showMessage("Please enter a domain.", "error");
-      return;
+    if (!response.ok) {
+      const message =
+        data?.error ||
+        data?.message ||
+        `Request failed with status ${response.status}`;
+      throw new Error(message);
     }
 
-    if (!SUBDOMAIN_REGEX.test(rawValue)) {
-      showMessage(
-        "Subdomains must use lowercase letters, numbers, and hyphens (no leading or trailing hyphen).",
-        "error"
-      );
-      return;
-    }
+    return data ?? {};
+  } catch (error) {
+    console.error("API request failed:", error);
+    throw new Error(error.message || "Network error, please try again.");
+  }
+}
 
-    hideMessage();
-    setButtonLoading(checkBtn, "Checking...");
+function showMessage(message, type = "info") {
+  const messageBox = document.getElementById("form-message");
+  if (!messageBox) return;
 
-    fetch(
-      `/api/subdomains/${encodeURIComponent(
-        rawValue
-      )}?domain=${encodeURIComponent(CURRENT_DOMAIN)}`
+  messageBox.textContent = message;
+  messageBox.className = "message-box show";
+  messageBox.classList.add(type);
+}
+
+function resetMessage() {
+  const messageBox = document.getElementById("form-message");
+  if (!messageBox) return;
+
+  const defaultMessage =
+    messageBox.dataset.defaultMessage || messageBox.textContent || "";
+
+  messageBox.className = "message-box";
+  if (defaultMessage) {
+    messageBox.textContent = defaultMessage;
+    messageBox.classList.add("show", "info");
+  } else {
+    messageBox.textContent = "";
+  }
+}
+
+function setButtonLoading(button, label) {
+  if (!button) return;
+  if (!button.dataset.originalText) {
+    button.dataset.originalText = button.textContent.trim();
+  }
+  button.disabled = true;
+  button.textContent = label;
+}
+
+function clearButtonLoading(button) {
+  if (!button) return;
+  const original = button.dataset.originalText;
+  if (original) {
+    button.textContent = original;
+    delete button.dataset.originalText;
+  }
+  button.disabled = false;
+}
+
+function setHidden(element, shouldHide) {
+  if (!element) return;
+  element.classList.toggle("hidden", Boolean(shouldHide));
+}
+
+function clearChildren(element) {
+  if (!element) return;
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+function formatDomainList(domains = []) {
+  return domains.join(", ");
+}
+
+function logoutAndRedirect(target = "index.html") {
+  localStorage.removeItem("token");
+  window.location.href = target;
+}
+
+function renderFooter() {
+  const container = document.getElementById("footer");
+  if (!container) return;
+  container.innerHTML = `
+    <footer class="site-footer">
+      <span class="footer-brand">SITEY</span>
+      <span class="footer-divider" aria-hidden="true">|</span>
+      <a href="/api/policies/privacy" target="_blank" rel="noopener noreferrer">
+        Privacy Policy
+      </a>
+    </footer>
+  `;
+}
+
+function renderNavbar(activePage = "home") {
+  const container = document.getElementById("navbar");
+  if (!container) return;
+
+  const token = getAuthToken();
+
+  const navLinks = [
+    { key: "home", href: "index.html", label: "Home" },
+    { key: "guide", href: "guide.html", label: "Guide" },
+    { key: "help", href: "help.html", label: "Help" },
+  ];
+
+  if (token) {
+    navLinks.push({
+      key: "dashboard",
+      href: "dashboard.html",
+      label: "My domains",
+    });
+  }
+
+  const authLinks = token
+    ? [
+        {
+          type: "button",
+          key: "logout",
+          label: "Log out",
+          id: "nav-logout-btn",
+        },
+      ]
+    : [{ type: "link", key: "login", href: "login.html", label: "Log in" }];
+
+  let html =
+    '<nav class="site-nav" aria-label="Primary"><div class="nav-left"><a href="index.html" class="nav-logo" aria-label="Sitey Home"><img src="sitey_logo.png" alt="sitey.one logo" /><span class="nav-brand">SITEY</span></a></div><div class="nav-center">';
+
+  html += navLinks
+    .map(
+      ({ key, href, label }) =>
+        `<a href="${href}" data-nav="${key}" class="${
+          activePage === key ? "active" : ""
+        }">${label}</a>`
     )
-      .then(async (response) => {
-        if (!response.ok) {
-          const data = await response.json().catch(() => ({}));
-          throw new Error(data.error || "Failed to check domain availability.");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        state.subdomain = rawValue;
-        state.exists = Boolean(data.exists);
-        state.verified = false;
-        state.currentIp = data.ip || "";
-        state.password = "";
+    .join("");
 
-        hideElement(createSection);
-        hideElement(manageSection);
-        hideElement(updateSection);
+  html += '</div><div class="nav-right">';
 
-        if (state.exists) {
-          showMessage(
-            "This subdomain is already in use. Please enter your password to manage it.",
-            "error"
-          );
-          managePasswordInput.value = "";
-          showElement(manageSection);
-          managePasswordInput.focus();
-        } else {
-          showMessage("Good news! This subdomain is available.", "success");
-          createIpInput.value = "";
-          createPasswordInput.value = "";
-          showElement(createSection);
-          createIpInput.focus();
-        }
-        hideElement(checkBtn);
-      })
-      .catch((error) => {
-        showMessage(error.message, "error");
-      })
-      .finally(() => clearButtonLoading(checkBtn));
+  authLinks.forEach((link) => {
+    if (link.type === "button") {
+      html += `<button type="button" id="${link.id}" class="nav-auth-btn">${link.label}</button>`;
+    } else {
+      html += `<a href="${link.href}" data-nav="${link.key}" class="nav-auth-btn ${
+        activePage === link.key ? "active" : ""
+      }">${link.label}</a>`;
+    }
+  });
+
+  html += "</div></nav>";
+  container.innerHTML = html;
+
+  const logoutBtn = container.querySelector("#nav-logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      logoutAndRedirect("index.html");
+    });
+  }
+}
+
+function createAvailabilityRow(result) {
+  const row = document.createElement("div");
+  row.className = `result-row ${
+    result.isAvailable ? "available" : "taken"
+  }`;
+
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "domain-name";
+  nameSpan.textContent = result.fullSubdomain;
+
+  const statusSpan = document.createElement("span");
+  statusSpan.className = `status ${
+    result.isAvailable ? "available" : "taken"
+  }`;
+  statusSpan.textContent = result.isAvailable ? "Available" : "Taken";
+
+  const actionButton = document.createElement("button");
+  actionButton.type = "button";
+  actionButton.className = "primary-button small";
+
+  const isLoggedIn = Boolean(getAuthToken());
+  actionButton.dataset.target = isLoggedIn
+    ? "dashboard.html"
+    : "login.html";
+  actionButton.textContent = result.isAvailable
+    ? isLoggedIn
+      ? "Open dashboard"
+      : "Log in to create"
+    : isLoggedIn
+    ? "Manage in dashboard"
+    : "Log in to manage";
+
+  row.appendChild(nameSpan);
+  row.appendChild(statusSpan);
+  row.appendChild(actionButton);
+
+  return row;
+}
+
+async function loadManagedDomains() {
+  const target = document.getElementById("domain-list-span");
+  if (!target) return;
+
+  try {
+    const data = await apiFetch("/api/managed-domains");
+    if (Array.isArray(data.domains) && data.domains.length > 0) {
+      target.textContent = formatDomainList(data.domains);
+    } else {
+      target.textContent = "No domains configured";
+    }
+  } catch (error) {
+    target.textContent = "Unavailable";
+  }
+}
+
+async function refreshDomainCount() {
+  const counter = document.getElementById("domain-count-number");
+  if (!counter) return;
+
+  try {
+    const data = await apiFetch("/api/stats/active-domains");
+    const value =
+      typeof data?.activeDomains === "number"
+        ? data.activeDomains
+        : "--";
+    counter.textContent = value;
+  } catch (error) {
+    counter.textContent = "N/A";
+  }
+}
+
+function setupAuthForm(form, config) {
+  if (!form) return;
+
+  const emailInput = form.querySelector("#auth-email");
+  const passwordInput = form.querySelector("#auth-password");
+  const submitBtn = form.querySelector("#auth-submit-btn");
+
+  if (!emailInput || !passwordInput || !submitBtn) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value.trim();
+
+    if (!email || !password) {
+      showMessage("Please provide both email and password.", "error");
+      return;
+    }
+
+    setButtonLoading(submitBtn, config.loadingLabel);
+    try {
+      const data = await apiFetch(config.endpoint, {
+        method: "POST",
+        body: { email, password },
+      });
+
+      if (typeof config.onSuccess === "function") {
+        await config.onSuccess(data);
+      }
+    } catch (error) {
+      showMessage(error.message, "error");
+    } finally {
+      clearButtonLoading(submitBtn);
+    }
+  });
+}
+
+function initializeLoginPage() {
+  renderNavbar("login");
+  renderFooter();
+  resetMessage();
+  const form = document.getElementById("login-form");
+
+  setupAuthForm(form, {
+    endpoint: "/api/auth/login",
+    loadingLabel: "Logging in…",
+    onSuccess: (data) => {
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+      }
+      showMessage("Login successful! Redirecting…", "success");
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 800);
+    },
+  });
+}
+
+function initializeSignupPage() {
+  renderNavbar("signup");
+  renderFooter();
+  resetMessage();
+  const form = document.getElementById("signup-form");
+
+  setupAuthForm(form, {
+    endpoint: "/api/auth/signup",
+    loadingLabel: "Creating account…",
+    onSuccess: (data) => {
+      const message =
+        data?.message || "Account created successfully. Redirecting…";
+      showMessage(message, "success");
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 1200);
+    },
+  });
+}
+
+function initializeDashboardPage() {
+  resetMessage();
+  const token = getAuthToken();
+
+  if (!token) {
+    renderNavbar("login");
+    renderFooter();
+    window.location.href = "login.html";
+    return;
   }
 
-  function handleCreate() {
-    if (!state.subdomain) {
-      showMessage("Check the subdomain first.", "error");
-      return;
-    }
+  renderNavbar("dashboard");
+  renderFooter();
 
-    if (!SUBDOMAIN_REGEX.test(state.subdomain)) {
-      showMessage("That subdomain format isn’t valid.", "error");
-      return;
-    }
+  const dashboardList = document.getElementById("dashboard-list");
+  const updateSection = document.getElementById("update-section");
+  const updateDomainName = document.getElementById("update-domain-name");
+  const updateIpInput = document.getElementById("update-ip");
+  const updateBtn = document.getElementById("update-btn");
+  const deleteBtn = document.getElementById("delete-btn");
+  const cancelUpdateBtn = document.getElementById("cancel-update-btn");
 
-    const ip = createIpInput.value.trim();
-    const password = createPasswordInput.value.trim();
-
-    if (!IP_REGEX.test(ip)) {
-      showMessage("Please enter a valid IPv4 address.", "error");
-      return;
-    }
-
-    if (!password) {
-      showMessage(
-        "Please set a password so you can manage this later.",
-        "error"
-      );
-      return;
-    }
-
-    hideMessage();
-    setButtonLoading(createBtn, "Creating...");
-
-    fetch("/api/subdomains", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        subdomain: state.subdomain,
-        ip,
-        password,
-        domain: CURRENT_DOMAIN,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(
-            data.error || "Failed to create the subdomain. Please try again."
-          );
-        }
-
-        state.exists = true;
-        state.verified = false;
-        state.password = "";
-        state.currentIp = ip;
-
-        hideElement(createSection);
-        hideElement(manageSection);
-        hideElement(updateSection);
-        managePasswordInput.value = "";
-        updateIpInput.value = "";
-        hideElement(checkBtn);
-
-        showMessage(
-          `🎉 ${data.domain} is live! Keep your password safe for future edits or removal.`,
-          "success"
-        );
-        refreshDomainCount();
-      })
-      .catch((error) => {
-        showMessage(`Failed: ${error.message}`, "error");
-      })
-      .finally(() => clearButtonLoading(createBtn));
+  function resetUpdateSection() {
+    if (!updateSection) return;
+    updateSection.dataset.subdomain = "";
+    updateSection.dataset.domain = "";
+    if (updateDomainName) updateDomainName.textContent = "";
+    if (updateIpInput) updateIpInput.value = "";
+    setHidden(updateSection, true);
   }
 
-  function handleVerify() {
-    if (!state.subdomain) {
-      showMessage("Check the subdomain first.", "error");
-      return;
+  async function fetchSubdomains() {
+    if (!dashboardList) return;
+    dashboardList.innerHTML = "<p>Loading your subdomains…</p>";
+
+    try {
+      const data = await apiFetch("/api/subdomains", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const items = Array.isArray(data) ? data : [];
+      dashboardList.innerHTML = "";
+
+      if (!items.length) {
+        dashboardList.innerHTML =
+          "<p>You have not created any subdomains yet.</p>";
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      items.forEach((item) => {
+        const row = document.createElement("div");
+        row.className = "dashboard-item";
+        row.innerHTML = `
+          <span class="domain-name">${item.subdomain}.${item.domain_name}</span>
+          <span class="ip-address">${item.ip}</span>
+          <button
+            type="button"
+            class="primary-button small"
+            data-action="edit"
+            data-subdomain="${item.subdomain}"
+            data-domain="${item.domain_name}"
+            data-ip="${item.ip}"
+          >
+            Edit
+          </button>
+        `;
+        fragment.appendChild(row);
+      });
+
+      dashboardList.appendChild(fragment);
+    } catch (error) {
+      showMessage(error.message, "error");
+      dashboardList.innerHTML =
+        '<p class="error">Could not load your subdomains.</p>';
     }
-
-    if (!SUBDOMAIN_REGEX.test(state.subdomain)) {
-      showMessage("That subdomain format isn’t valid.", "error");
-      return;
-    }
-
-    const password = managePasswordInput.value.trim();
-    if (!password) {
-      showMessage("Please enter your password.", "error");
-      return;
-    }
-
-    hideMessage();
-    setButtonLoading(manageCheckBtn, "Checking...");
-
-    fetch(`/api/subdomains/${encodeURIComponent(state.subdomain)}/verify`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ password, domain: CURRENT_DOMAIN }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Password verification failed.");
-        }
-
-        state.exists = true;
-        state.verified = true;
-        state.password = password;
-        state.currentIp = data.ip;
-
-        hideElement(manageSection);
-        showElement(updateSection);
-        updateIpInput.value = data.ip;
-
-        showMessage(
-          "Password confirmed! You can update the IP or delete the record.",
-          "success"
-        );
-      })
-      .catch((error) => {
-        showMessage(`${error.message}`, "error");
-      })
-      .finally(() => clearButtonLoading(manageCheckBtn));
   }
 
-  function handleUpdate() {
-    if (!state.verified || !state.subdomain) {
-      showMessage("Verify the password first.", "error");
-      return;
-    }
+  async function handleUpdate() {
+    if (!updateSection || !updateIpInput || !updateBtn) return;
 
-    if (!SUBDOMAIN_REGEX.test(state.subdomain)) {
-      showMessage("That subdomain format isn’t valid.", "error");
-      return;
-    }
-
+    const subdomain = updateSection.dataset.subdomain;
+    const domain = updateSection.dataset.domain;
     const newIp = updateIpInput.value.trim();
-    if (!IP_REGEX.test(newIp)) {
-      showMessage("Please enter a valid IPv4 address.", "error");
+
+    if (!subdomain || !domain) return;
+    if (!newIp || !IPV4_REGEX.test(newIp)) {
+      showMessage("Enter a valid IPv4 address before saving.", "error");
       return;
     }
 
-    hideMessage();
-    setButtonLoading(updateBtn, "Updating...");
+    setButtonLoading(updateBtn, "Updating…");
+    try {
+      await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { ip: newIp, domain },
+      });
 
-    fetch(`/api/subdomains/${encodeURIComponent(state.subdomain)}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        ip: newIp,
-        password: state.password,
-        domain: CURRENT_DOMAIN,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Unable to update the IP address.");
-        }
-
-        state.currentIp = newIp;
-        updateIpInput.value = newIp;
-        showMessage("IP updated successfully!", "success");
-      })
-      .catch((error) => {
-        showMessage(`Failed: ${error.message}`, "error");
-      })
-      .finally(() => clearButtonLoading(updateBtn));
+      showMessage("Subdomain updated successfully.", "success");
+      resetUpdateSection();
+      await fetchSubdomains();
+    } catch (error) {
+      showMessage(error.message, "error");
+    } finally {
+      clearButtonLoading(updateBtn);
+    }
   }
 
-  function handleDelete() {
-    if (!state.verified || !state.subdomain) {
-      showMessage("Verify the password first before deleting.", "error");
-      return;
-    }
+  async function handleDelete() {
+    if (!updateSection || !deleteBtn) return;
 
-    if (!SUBDOMAIN_REGEX.test(state.subdomain)) {
-      showMessage("That subdomain format isn’t valid.", "error");
-      return;
-    }
+    const subdomain = updateSection.dataset.subdomain;
+    const domain = updateSection.dataset.domain;
+    if (!subdomain || !domain) return;
 
     const confirmed = window.confirm(
-      "Are you sure you want to delete this subdomain?"
+      `Delete ${subdomain}.${domain}? This cannot be undone.`
     );
+    if (!confirmed) return;
 
-    if (!confirmed) {
-      return;
-    }
-
-    hideMessage();
-    setButtonLoading(deleteBtn, "Deleting...");
-
-    fetch(`/api/subdomains/${encodeURIComponent(state.subdomain)}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        password: state.password,
-        domain: CURRENT_DOMAIN,
-      }),
-    })
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error || "Failed to delete the subdomain.");
-        }
-
-        showMessage("Subdomain deleted successfully.", "success");
-
-        state.exists = false;
-        state.verified = false;
-        state.password = "";
-        state.currentIp = "";
-
-        showElement(checkBtn);
-        hideElement(createSection);
-        hideElement(manageSection);
-        hideElement(updateSection);
-        refreshDomainCount();
-      })
-      .catch((error) => {
-        showMessage(`Failed: ${error.message}`, "error");
-      })
-      .finally(() => clearButtonLoading(deleteBtn));
-  }
-
-  function handleSubdomainChange() {
-    state.subdomain = "";
-    state.exists = false;
-    state.verified = false;
-    state.currentIp = "";
-    state.password = "";
-
-    showElement(checkBtn);
-    hideElement(createSection);
-    hideElement(manageSection);
-    hideElement(updateSection);
-    clearButtonLoading(checkBtn);
-  }
-
-  function showMessage(message, type = "info") {
-    if (!messageBox) {
-      return;
-    }
-    messageBox.textContent = message;
-    messageBox.className = "message-box ticker show";
-    messageBox.classList.add(type);
-    triggerTickerAnimation();
-  }
-
-  function hideMessage() {
-    if (!messageBox) {
-      return;
-    }
-    messageBox.textContent = DEFAULT_MESSAGE;
-    messageBox.className = "message-box ticker show info";
-    triggerTickerAnimation();
-  }
-
-  function triggerTickerAnimation() {
-    if (!messageBox) {
-      return;
-    }
-    messageBox.classList.remove("ticker-animate");
-    // Force reflow so the animation can restart.
-    void messageBox.offsetWidth;
-    messageBox.classList.add("ticker-animate");
-  }
-
-  function refreshDomainCount({ indicate = false } = {}) {
-    if (!domainIndicator) {
-      return;
-    }
-
-    if (indicate || !domainIndicator.textContent.trim()) {
-      domainIndicator.textContent = "Loading active domains...";
-    }
-
-    fetch("/api/stats/active-domains")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch active domains");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        const count = Number(data.activeDomains);
-        domainIndicator.textContent = Number.isFinite(count)
-          ? `Active Domains: ${count}`
-          : "Active Domains: --";
-      })
-      .catch(() => {
-        domainIndicator.textContent = "Active Domains: --";
+    setButtonLoading(deleteBtn, "Deleting…");
+    try {
+      await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: { domain },
       });
-  }
 
-  function setButtonLoading(button, label) {
-    if (!button.dataset.originalText) {
-      button.dataset.originalText = button.textContent;
-    }
-    button.disabled = true;
-    button.textContent = label;
-  }
-
-  function clearButtonLoading(button) {
-    if (button.dataset.originalText) {
-      button.textContent = button.dataset.originalText;
-      delete button.dataset.originalText;
-    }
-    button.disabled = false;
-  }
-
-  function showElement(element) {
-    element.classList.remove("hidden");
-  }
-
-  function hideElement(element) {
-    if (!element.classList.contains("hidden")) {
-      element.classList.add("hidden");
+      showMessage("Subdomain deleted successfully.", "success");
+      resetUpdateSection();
+      await fetchSubdomains();
+    } catch (error) {
+      showMessage(error.message, "error");
+    } finally {
+      clearButtonLoading(deleteBtn);
     }
   }
 
-  hideMessage();
-  refreshDomainCount({ indicate: true });
+  if (dashboardList) {
+    dashboardList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-action='edit']");
+      if (!button || !updateSection || !updateDomainName || !updateIpInput)
+        return;
+
+      updateSection.dataset.subdomain = button.dataset.subdomain || "";
+      updateSection.dataset.domain = button.dataset.domain || "";
+      updateDomainName.textContent = `${button.dataset.subdomain}.${button.dataset.domain}`;
+      updateIpInput.value = button.dataset.ip || "";
+      setHidden(updateSection, false);
+      updateIpInput.focus();
+    });
+  }
+
+  if (cancelUpdateBtn) {
+    cancelUpdateBtn.addEventListener("click", () => {
+      resetUpdateSection();
+    });
+  }
+
+  if (updateBtn) {
+    updateBtn.addEventListener("click", handleUpdate);
+  }
+
+  if (deleteBtn) {
+    deleteBtn.addEventListener("click", handleDelete);
+  }
+
+  fetchSubdomains();
+}
+
+function initializeLandingPage() {
+  renderNavbar("home");
+  renderFooter();
+  resetMessage();
+  loadManagedDomains();
+  refreshDomainCount();
+
+  const form = document.getElementById("subdomain-form");
+  const subdomainInput = document.getElementById("subdomain");
+  const checkBtn = document.getElementById("check-btn");
+  const resultsContainer = document.getElementById("availability-results");
+
+  if (!form || !subdomainInput || !checkBtn || !resultsContainer) return;
+
+  subdomainInput.addEventListener("input", () => {
+    resetMessage();
+    clearChildren(resultsContainer);
+    setHidden(resultsContainer, true);
+  });
+
+  resultsContainer.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-target]");
+    if (!button) return;
+    const targetUrl = button.dataset.target;
+    if (targetUrl) {
+      window.location.href = targetUrl;
+    }
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const inputValue = subdomainInput.value.trim().toLowerCase();
+
+    if (!inputValue) {
+      showMessage("Enter a subdomain to check.", "error");
+      return;
+    }
+
+    if (!SUBDOMAIN_REGEX.test(inputValue)) {
+      showMessage(
+        "Use lowercase letters, numbers, and single hyphens only.",
+        "error"
+      );
+      return;
+    }
+
+    setButtonLoading(checkBtn, "Checking…");
+    clearChildren(resultsContainer);
+    setHidden(resultsContainer, true);
+
+    try {
+      const data = await apiFetch("/api/check-availability", {
+        method: "POST",
+        body: { subdomain: inputValue },
+      });
+
+      const results = Array.isArray(data?.results) ? data.results : [];
+
+      if (!results.length) {
+        showMessage("No availability data returned.", "info");
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+      results.forEach((result) => {
+        fragment.appendChild(createAvailabilityRow(result));
+      });
+
+      resultsContainer.appendChild(fragment);
+      setHidden(resultsContainer, false);
+    } catch (error) {
+      showMessage(error.message, "error");
+    } finally {
+      clearButtonLoading(checkBtn);
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const initializers = [
+    { selector: "#login-form", init: initializeLoginPage },
+    { selector: "#signup-form", init: initializeSignupPage },
+    { selector: "#dashboard-section", init: initializeDashboardPage },
+    { selector: "#subdomain-form", init: initializeLandingPage },
+  ];
+
+  let initialized = false;
+
+  for (const { selector, init } of initializers) {
+    if (document.querySelector(selector)) {
+      init();
+      initialized = true;
+      break;
+    }
+  }
+
+  if (!initialized) {
+    const active = document.body?.dataset?.page || "home";
+    renderNavbar(active);
+    renderFooter();
+  }
 });

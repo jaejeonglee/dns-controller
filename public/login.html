@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Subdomain Service</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body data-page="login">
+    <div class="container">
+      <div id="navbar"></div>
+
+      <header>
+        <h1 id="main-headline">Log In</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="Welcome back! Manage your subdomains."
+        >
+          Welcome back! Manage your subdomains.
+        </div>
+      </header>
+
+      <main>
+        <section class="form-section">
+          <form id="login-form" novalidate>
+            <div class="input-group">
+              <input
+                type="email"
+                id="auth-email"
+                placeholder="Email address"
+                required
+                autocomplete="email"
+              />
+            </div>
+            <div class="input-group">
+              <input
+                type="password"
+                id="auth-password"
+                placeholder="Password"
+                required
+                autocomplete="current-password"
+              />
+            </div>
+            <button type="submit" id="auth-submit-btn" class="primary-button">
+              Log In
+            </button>
+            <a class="link-button" href="signup.html">Create an account</a>
+          </form>
+        </section>
+      </main>
+
+      <div id="footer"></div>
+    </div>
+  </body>
+</html>

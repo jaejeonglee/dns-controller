@@ -3,46 +3,25 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Claim your free subdomain</title>
+    <title>Sitey - free domain</title>
     <meta
       name="description"
-      content="Claim a free custom domain in minutes. Check availability, create DNS records, and manage them with ease."
+      content="Check sitey.one subdomain availability, create DNS records, and manage them from a simple dashboard."
     />
     <meta
       name="keywords"
-      content="free subdomain, dns management, domain checker, domain manager"
+      content="sitey.one, subdomain, dns management, free domain, domain checker"
     />
     <meta name="author" content="Subdomain Service" />
     <meta name="theme-color" content="#1d2d6b" />
-
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Claim your free subdomain" />
-    <meta
-      property="og:description"
-      content="Create and manage a free custom domain with simple DNS controls."
-    />
-    <meta property="og:url" content="https://sitey.one" />
-    <meta property="og:image" content="https://sitey.one/og-preview.png" />
-    <meta name="twitter:card" content="summary_large_image" />
-
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
-
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4214732111289465"
-      crossorigin="anonymous"
-    ></script>
   </head>
-  <body>
+  <body data-page="home">
     <div class="container">
-      <nav class="site-nav" aria-label="Primary">
-        <a href="#intro">About this</a>
-        <a href="#guide">Guide</a>
-        <a href="#trust">Help & Support</a>
-      </nav>
+      <div id="navbar"></div>
 
       <div class="top-indicators">
         <div
@@ -51,206 +30,85 @@
           aria-live="polite"
           aria-atomic="true"
         >
-          Active Domains: <span id="domain-count-number">--</span>
+          Active domains: <span id="domain-count-number">--</span>
         </div>
       </div>
 
       <header>
-        <h1 id="main-headline">Set up your free domain</h1>
+        <h1>Get your domain</h1>
+        <p class="managed-domains-list">
+          with
+          <span id="domain-list-span" aria-live="polite">Loading…</span>
+        </p>
         <div
           id="form-message"
-          class="message-box ticker show info"
+          class="message-box show info"
           role="status"
           aria-live="polite"
-          data-default-message="Check availability and manage your records with confidence."
+          data-default-message="Check availability and manage your domains."
         >
-          Check availability and manage your records with confidence.
+          Check availability and manage your domains.
         </div>
       </header>
 
-      <main>
-        <section class="form-section">
-          <form id="subdomain-form" novalidate>
-            <div class="input-group with-button">
-              <input
-                type="text"
-                id="subdomain"
-                placeholder="your-subdomain"
-                required
-                pattern="^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
-                autocomplete="off"
-                spellcheck="false"
-                autocapitalize="none"
-                title="Subdomain can contain lowercase letters, numbers, and hyphens."
-              />
-              <span class="domain-suffix" id="domain-suffix-span"></span>
-              <button
-                type="submit"
-                id="check-btn"
-                class="primary-button small inline-button"
-              >
-                Check
-              </button>
-            </div>
-
-            <div id="create-section" class="stack hidden">
-              <div class="input-group">
-                <input
-                  type="text"
-                  id="create-ip"
-                  placeholder="IP address to connect"
-                  pattern="^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
-                />
-              </div>
-              <div class="input-group">
-                <input
-                  type="password"
-                  id="create-password"
-                  placeholder="Password for managing this subdomain"
-                />
-              </div>
-              <button type="button" id="create-btn" class="primary-button">
-                Create subdomain
-              </button>
-            </div>
-
-            <div id="manage-section" class="stack hidden" aria-live="polite">
-              <div class="input-group with-button">
-                <input
-                  type="password"
-                  id="manage-password"
-                  placeholder="Enter your password"
-                />
-                <button
-                  type="button"
-                  id="manage-check-btn"
-                  class="primary-button small inline-button"
-                >
-                  Check
-                </button>
-              </div>
-            </div>
-
-            <div id="update-section" class="stack hidden">
-              <div class="input-group">
-                <input
-                  type="text"
-                  id="update-ip"
-                  placeholder="New IP address"
-                  pattern="^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
-                />
-              </div>
-              <div class="action-buttons">
-                <button type="button" class="primary-button" id="update-btn">
-                  Update IP
-                </button>
-                <button type="button" class="danger-button" id="delete-btn">
-                  Delete subdomain
-                </button>
-              </div>
-            </div>
-          </form>
-        </section>
-
-        <section id="intro" class="content-section">
-          <h2>What We Deliver</h2>
-          <p>
-            Our Domain Controller helps developers, makers, and communities
-            launch projects on the web in minutes.
-          </p>
-          <ul class="feature-list">
-            <li>
-              Speed: Claim a custom subdomain on our BIND9 nameserver in
-              seconds.
-            </li>
-            <li>
-              Control: Connect or swap IP targets without touching registrar
-              dashboards.
-            </li>
-            <li>
-              Security: Keep ownership safe with password-only access to updates
-              and deletion.
-            </li>
-            <li>
-              Reliability: Built on a self-hosted BIND9 infrastructure for
-              maximum control.
-            </li>
-          </ul>
-        </section>
-
-        <section id="guide" class="content-section">
-          <h2>How It Works</h2>
-          <div class="step-cards">
-            <article>
-              <h4>1. Check Availability</h4>
-              <p>
-                Enter your desired subdomain (e.g., "my-project"). We will
-                instantly check to see if it's available.
-              </p>
-            </article>
-            <article>
-              <h4>2. Create Your Record</h4>
-              <p>
-                If available, enter your server's IPv4 address and a strong
-                password. This password is your key to managing the record
-                later.
-              </p>
-            </article>
-            <article>
-              <h4>3. Manage & Update</h4>
-              <p>
-                Need to change your IP? Just re-enter your subdomain, verify
-                with your password, and update the IP or delete the record
-                instantly.
-              </p>
-            </article>
+      <main class="flow">
+        <form id="subdomain-form" novalidate>
+          <div class="input-group with-button">
+            <input
+              type="text"
+              id="subdomain"
+              placeholder="your desired domain"
+              required
+              pattern="^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$"
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="none"
+              title="Subdomain can contain lowercase letters, numbers, and hyphens."
+            />
+            <button
+              type="submit"
+              id="check-btn"
+              class="primary-button small inline-button"
+            >
+              Check
+            </button>
           </div>
-          <p class="tip">
-            Your new DNS record is written directly to our nameserver's zone
-            file and reloaded. Global propagation usually begins within 60
-            seconds.
-          </p>
-        </section>
+        </form>
 
-        <section id="trust" class="content-section">
-          <h2>Help & Support</h2>
-          <dl class="info-list">
-            <div>
-              <dd>
-                This is a personal project. For help or to report abuse, reach
-                us at
-                <a href="https://t.me/+yvrIFDbssJ0wNDJl">ⓣTelegram</a>.
-              </dd>
-            </div>
-          </dl>
-          <div class="support-cta">
-            <h3>Support the project</h3>
-            <p>
-              I hope it helps! This service runs on love and a little bit of
-              coffee ☕❤️
-            </p>
-            <div class="support-actions">
-              <a
-                class="donate-button"
-                href="https://www.buymeacoffee.com/helpmeup"
-                target="_blank"
-                rel="noopener noreferrer"
-                >Thank you 👍</a
-              >
-            </div>
-          </div>
-        </section>
+        <div
+          id="availability-results"
+          class="stack hidden"
+          aria-live="polite"
+        ></div>
       </main>
 
-      <footer>
-        <span id="footer-domain-name">sitey.one</span> |
-        <a
-          href="/api/policies/privacy"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Privacy Policy</a
-        >
-      </footer>
+      <section id="intro" class="content-section">
+        <h2>What We Deliver</h2>
+        <p>
+          This service helps developers, makers, and communities launch projects
+          on the web in minutes.
+        </p>
+        <ul class="feature-list">
+          <li>
+            <strong>Speed:</strong> Claim a custom subdomain on our nameserver
+            in seconds.
+          </li>
+          <li>
+            <strong>Control:</strong> Update DNS targets without touching a
+            registrar dashboard.
+          </li>
+          <li>
+            <strong>Security:</strong> Manage changes securely through your own
+            credentials.
+          </li>
+          <li>
+            <strong>Reliability:</strong> Built on self-hosted infrastructure
+            with daily backups.
+          </li>
+        </ul>
+      </section>
+
+      <div id="footer"></div>
     </div>
   </body>
 </html>
