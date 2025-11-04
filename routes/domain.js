@@ -60,6 +60,7 @@ async function domainRoutes(fastify, options) {
 
           return {
             domain,
+            subdomain,
             fullSubdomain: `${subdomain}.${domain}`,
             isAvailable: !isTakenInBind && !isTakenInDb,
           };

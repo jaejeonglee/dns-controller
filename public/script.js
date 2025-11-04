@@ -208,16 +208,22 @@ function createAvailabilityRow(result) {
   actionButton.className = "primary-button small";
 
   const isLoggedIn = Boolean(getAuthToken());
-  actionButton.dataset.target = isLoggedIn
-    ? "dashboard.html"
-    : "login.html";
-  actionButton.textContent = result.isAvailable
-    ? isLoggedIn
-      ? "Open dashboard"
-      : "Log in to create"
-    : isLoggedIn
-    ? "Manage in dashboard"
-    : "Log in to manage";
+  if (result.isAvailable) {
+    if (isLoggedIn) {
+      actionButton.dataset.action = "open-create";
+      actionButton.dataset.domain = result.domain;
+      actionButton.dataset.subdomain = result.subdomain;
+      actionButton.textContent = "Create record";
+    } else {
+      actionButton.dataset.target = "login.html";
+      actionButton.textContent = "Log in to create";
+    }
+  } else {
+    actionButton.dataset.target = isLoggedIn ? "dashboard.html" : "login.html";
+    actionButton.textContent = isLoggedIn
+      ? "Manage in dashboard"
+      : "Log in to manage";
+  }
 
   row.appendChild(nameSpan);
   row.appendChild(statusSpan);
@@ -531,14 +537,145 @@ function initializeLandingPage() {
     setHidden(resultsContainer, true);
   });
 
+  const createModal = document.getElementById("create-modal");
+  const createModalDomain = document.getElementById("create-modal-domain");
+  const createModalForm = document.getElementById("create-modal-form");
+  const createModalIp = document.getElementById("create-modal-ip");
+  const createModalSubmit = document.getElementById("create-modal-submit");
+  const createModalClose = document.getElementById("create-modal-close");
+  const createModalBackdrop = document.querySelector(
+    "#create-modal [data-modal-close]"
+  );
+
+  let activeCreateContext = null;
+
+  const openCreateModal = (context) => {
+    if (!createModal || !createModalDomain || !createModalIp) {
+      return;
+    }
+    activeCreateContext = context;
+    createModalDomain.textContent = `${context.subdomain}.${context.domain}`;
+    createModalIp.value = "";
+    setHidden(createModal, false);
+    document.body.classList.add("modal-open");
+    setTimeout(() => createModalIp.focus(), 0);
+  };
+
+  const closeCreateModal = () => {
+    if (!createModal) return;
+    activeCreateContext = null;
+    setHidden(createModal, true);
+    document.body.classList.remove("modal-open");
+  };
+
   resultsContainer.addEventListener("click", (event) => {
-    const button = event.target.closest("button[data-target]");
+    const button = event.target.closest("button");
     if (!button) return;
+
+    if (button.dataset.action === "open-create") {
+      const domain = button.dataset.domain;
+      const subdomain = button.dataset.subdomain;
+      if (!domain || !subdomain) {
+        showMessage("Unable to prepare creation form.", "error");
+        return;
+      }
+
+      const token = getAuthToken();
+      if (!token) {
+        window.location.href = "login.html";
+        return;
+      }
+
+      openCreateModal({ domain, subdomain });
+      return;
+    }
+
     const targetUrl = button.dataset.target;
     if (targetUrl) {
       window.location.href = targetUrl;
     }
   });
+
+  if (createModalClose) {
+    createModalClose.addEventListener("click", closeCreateModal);
+  }
+  if (createModalBackdrop) {
+    createModalBackdrop.addEventListener("click", closeCreateModal);
+  }
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && createModal && !createModal.classList.contains("hidden")) {
+      closeCreateModal();
+    }
+  });
+
+  if (createModalForm) {
+    createModalForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!activeCreateContext) return;
+
+      const token = getAuthToken();
+      if (!token) {
+        closeCreateModal();
+        window.location.href = "login.html";
+        return;
+      }
+
+      const ip = (createModalIp?.value || "").trim();
+      if (!IPV4_REGEX.test(ip)) {
+        showMessage("Enter a valid IPv4 address (e.g. 203.0.113.10).", "error");
+        createModalIp?.focus();
+        return;
+      }
+
+      setButtonLoading(createModalSubmit, "Creating…");
+
+      try {
+        await apiFetch("/api/subdomains", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: {
+            subdomain: activeCreateContext.subdomain,
+            domain: activeCreateContext.domain,
+            ip,
+          },
+        });
+
+        showMessage(
+          `Created ${activeCreateContext.subdomain}.${activeCreateContext.domain}.`,
+          "success"
+        );
+
+        const createdButton = resultsContainer.querySelector(
+          `button[data-domain="${activeCreateContext.domain}"][data-subdomain="${activeCreateContext.subdomain}"]`
+        );
+        if (createdButton) {
+          delete createdButton.dataset.action;
+          createdButton.dataset.target = "dashboard.html";
+          createdButton.textContent = "Manage in dashboard";
+          const row = createdButton.closest(".result-row");
+          const status = row?.querySelector(".status");
+          if (row) {
+            row.classList.remove("available");
+            row.classList.add("taken");
+          }
+          if (status) {
+            status.classList.remove("available");
+            status.classList.add("taken");
+            status.textContent = "Taken";
+          }
+        }
+
+        closeCreateModal();
+        refreshDomainCount();
+      } catch (error) {
+        showMessage(error.message, "error");
+      } finally {
+        clearButtonLoading(createModalSubmit);
+      }
+    });
+  }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
