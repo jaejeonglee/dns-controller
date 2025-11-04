@@ -232,9 +232,10 @@ input {
 
 .result-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 2fr) minmax(120px, max-content)
+    minmax(160px, max-content);
   align-items: center;
-  gap: 16px;
+  column-gap: clamp(18px, 5vw, 52px);
   padding: 12px 2px;
 }
 
@@ -253,6 +254,7 @@ input {
   font-weight: 600;
   min-width: 96px;
   text-align: center;
+  justify-self: center;
 }
 
 .result-row .status.available {
@@ -261,6 +263,10 @@ input {
 
 .result-row .status.taken {
   color: rgba(28, 35, 48, 0.6);
+}
+
+.result-row .primary-button {
+  justify-self: end;
 }
 
 .form-label {
@@ -848,13 +854,14 @@ input {
   .result-row {
     grid-template-columns: 1fr;
     align-items: stretch;
-    justify-items: flex-start;
+    justify-items: start;
     gap: 12px;
   }
 
   .result-row .status {
     min-width: 0;
     text-align: left;
+    justify-self: start;
   }
 
   .result-row .primary-button {
