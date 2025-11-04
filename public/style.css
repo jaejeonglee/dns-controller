@@ -231,9 +231,9 @@ input {
 }
 
 .result-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   padding: 12px 2px;
 }
@@ -251,6 +251,8 @@ input {
 .result-row .status {
   font-size: 0.95rem;
   font-weight: 600;
+  min-width: 96px;
+  text-align: center;
 }
 
 .result-row .status.available {
@@ -844,8 +846,20 @@ input {
   }
 
   .result-row {
-    flex-direction: column;
+    grid-template-columns: 1fr;
     align-items: stretch;
+    justify-items: flex-start;
+    gap: 12px;
+  }
+
+  .result-row .status {
+    min-width: 0;
+    text-align: left;
+  }
+
+  .result-row .primary-button {
+    width: 100%;
+    justify-self: stretch;
   }
 
   .dashboard-item-header {
