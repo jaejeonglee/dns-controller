@@ -41,7 +41,7 @@ async function domainRoutes(fastify, options) {
     const subdomain = (rawSubdomain || "").trim().toLowerCase();
 
     if (!subdomain || !isValidSubdomain(subdomain)) {
-      return reply.code(400).send({ error: "Invalid subdomain format" });
+      return reply.code(400).send({ error: "Invalid domain format" });
     }
 
     try {
@@ -72,7 +72,7 @@ async function domainRoutes(fastify, options) {
       fastify.log.error(error, "Failed to check multi-domain availability");
       return reply
         .code(500)
-        .send({ error: "Error checking subdomain availability" });
+        .send({ error: "Error checking domain availability" });
     }
   });
 
@@ -97,10 +97,10 @@ async function domainRoutes(fastify, options) {
 
         return reply.send(rows);
       } catch (error) {
-        fastify.log.error(error, "Failed to fetch user subdomains");
+        fastify.log.error(error, "Failed to fetch user domains");
         return reply
           .code(500)
-          .send({ error: "Error fetching your subdomains" });
+          .send({ error: "Error fetching your domains" });
       }
     }
   );
@@ -118,10 +118,10 @@ async function domainRoutes(fastify, options) {
       if (!subdomain || !ip || !domain || !MANAGED_DOMAINS.includes(domain)) {
         return reply
           .code(400)
-          .send({ error: "subdomain, ip, and domain are required" });
+          .send({ error: "Domain name, IP, and domain are required" });
       }
       if (!isValidSubdomain(subdomain)) {
-        return reply.code(400).send({ error: "Invalid subdomain format" });
+        return reply.code(400).send({ error: "Invalid domain format" });
       }
 
       const connection = await fastify.mysql.getConnection();
@@ -136,7 +136,7 @@ async function domainRoutes(fastify, options) {
           [subdomain, domain]
         );
         if (isTakenInBind || rows.length > 0) {
-          return reply.code(409).send({ error: "Already taken subdomain." });
+          return reply.code(409).send({ error: "Domain is already in use." });
         }
 
         // (Fetch managed domain ID)
@@ -166,10 +166,10 @@ async function domainRoutes(fastify, options) {
           ip: newRecord.content,
         });
       } catch (error) {
-        fastify.log.error(error, "Failed to process subdomain creation");
+        fastify.log.error(error, "Failed to process domain creation");
         return reply
           .code(500)
-          .send({ error: "Server error during subdomain creation" });
+          .send({ error: "Server error during domain creation" });
       } finally {
         connection.release();
       }
@@ -204,7 +204,7 @@ async function domainRoutes(fastify, options) {
 
         if (!record) {
           return reply.code(404).send({
-            error: "Subdomain not found or you do not own this record.",
+            error: "Domain not found or you do not own this record.",
           });
         }
 
@@ -225,10 +225,10 @@ async function domainRoutes(fastify, options) {
           message: "Subdomain IP updated successfully.",
         });
       } catch (error) {
-        fastify.log.error(error, "Failed to update subdomain");
+        fastify.log.error(error, "Failed to update domain");
         return reply
           .code(500)
-          .send({ error: "Server error during subdomain update" });
+          .send({ error: "Server error during domain update" });
       }
     }
   );
@@ -259,7 +259,7 @@ async function domainRoutes(fastify, options) {
 
         if (!record) {
           return reply.code(404).send({
-            error: "Subdomain not found or you do not own this record.",
+            error: "Domain not found or you do not own this record.",
           });
         }
 
@@ -278,10 +278,10 @@ async function domainRoutes(fastify, options) {
           .code(200)
           .send({ success: true, message: "Subdomain deleted successfully." });
       } catch (error) {
-        fastify.log.error(error, "Failed to delete subdomain");
+        fastify.log.error(error, "Failed to delete domain");
         return reply
           .code(500)
-          .send({ error: "Server error during subdomain deletion" });
+          .send({ error: "Server error during domain deletion" });
       }
     }
   );

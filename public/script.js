@@ -375,7 +375,7 @@ function initializeDashboardPage() {
 
   async function fetchSubdomains() {
     if (!dashboardList) return;
-    dashboardList.innerHTML = "<p>Loading your subdomains…</p>";
+      dashboardList.innerHTML = "<p>Loading your domains…</p>";
 
     try {
       const data = await apiFetch("/api/subdomains", {
@@ -387,7 +387,7 @@ function initializeDashboardPage() {
 
       if (!items.length) {
         dashboardList.innerHTML =
-          "<p>You have not created any subdomains yet.</p>";
+          "<p>You have not created any domains yet.</p>";
         return;
       }
 
@@ -416,7 +416,7 @@ function initializeDashboardPage() {
     } catch (error) {
       showMessage(error.message, "error");
       dashboardList.innerHTML =
-        '<p class="error">Could not load your subdomains.</p>';
+        '<p class="error">Could not load your domains.</p>';
     }
   }
 
@@ -443,7 +443,7 @@ function initializeDashboardPage() {
         body: { ip: newIp, domain },
       });
 
-      showMessage("Subdomain updated successfully.", "success");
+      showMessage("Domain updated successfully.", "success");
       resetUpdateSection();
       await fetchSubdomains();
     } catch (error) {
@@ -461,7 +461,7 @@ function initializeDashboardPage() {
     if (!subdomain || !domain) return;
 
     const confirmed = window.confirm(
-      `Delete ${subdomain}.${domain}? This cannot be undone.`
+      `Delete domain ${subdomain}.${domain}? This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -475,7 +475,7 @@ function initializeDashboardPage() {
         body: { domain },
       });
 
-      showMessage("Subdomain deleted successfully.", "success");
+      showMessage("Domain deleted successfully.", "success");
       resetUpdateSection();
       await fetchSubdomains();
     } catch (error) {
@@ -643,7 +643,7 @@ function initializeLandingPage() {
         });
 
         showMessage(
-          `Created ${activeCreateContext.subdomain}.${activeCreateContext.domain}.`,
+          `Domain ${activeCreateContext.subdomain}.${activeCreateContext.domain} created successfully.`,
           "success"
         );
 
@@ -682,13 +682,13 @@ function initializeLandingPage() {
     const inputValue = subdomainInput.value.trim().toLowerCase();
 
     if (!inputValue) {
-      showMessage("Enter a subdomain to check.", "error");
+      showMessage("Enter a domain to check.", "error");
       return;
     }
 
     if (!SUBDOMAIN_REGEX.test(inputValue)) {
       showMessage(
-        "Use lowercase letters, numbers, and single hyphens only.",
+        "Domain names can contain lowercase letters, numbers, and single hyphens only.",
         "error"
       );
       return;
