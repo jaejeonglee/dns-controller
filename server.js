@@ -24,15 +24,17 @@ fastify.register(require("@fastify/static"), {
 
 // --- 2. onResponse hook (logging) ---
 fastify.addHook("onResponse", (request, reply, done) => {
-  const forwarded = request.headers["x-forwarded-for"];
-  const remoteAddress =
-    request.headers["cf-connecting-ip"] ||
-    (forwarded ? forwarded.split(",")[0].trim() : null) ||
-    request.headers["x-real-ip"] ||
-    request.raw.socket?.remoteAddress ||
-    request.ip;
   const url = request.raw.url;
-  fastify.log.info(` ${url} | ${remoteAddress}`);
+  if (url.startsWith("/api")) {
+    const forwarded = request.headers["x-forwarded-for"];
+    const remoteAddress =
+      request.headers["cf-connecting-ip"] ||
+      (forwarded ? forwarded.split(",")[0].trim() : null) ||
+      request.headers["x-real-ip"] ||
+      request.raw.socket?.remoteAddress ||
+      request.ip;
+    fastify.log.info(` ${url} | ${remoteAddress}`);
+  }
   done();
 });
 
