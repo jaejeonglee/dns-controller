@@ -1,5 +1,4 @@
-const SUBDOMAIN_REGEX =
-  /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const IPV4_REGEX =
   /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
 
@@ -169,9 +168,11 @@ function renderNavbar(activePage = "home") {
     if (link.type === "button") {
       html += `<button type="button" id="${link.id}" class="nav-auth-btn">${link.label}</button>`;
     } else {
-      html += `<a href="${link.href}" data-nav="${link.key}" class="nav-auth-btn ${
-        activePage === link.key ? "active" : ""
-      }">${link.label}</a>`;
+      html += `<a href="${link.href}" data-nav="${
+        link.key
+      }" class="nav-auth-btn ${activePage === link.key ? "active" : ""}">${
+        link.label
+      }</a>`;
     }
   });
 
@@ -189,18 +190,14 @@ function renderNavbar(activePage = "home") {
 
 function createAvailabilityRow(result) {
   const row = document.createElement("div");
-  row.className = `result-row ${
-    result.isAvailable ? "available" : "taken"
-  }`;
+  row.className = `result-row ${result.isAvailable ? "available" : "taken"}`;
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "domain-name";
   nameSpan.textContent = result.fullSubdomain;
 
   const statusSpan = document.createElement("span");
-  statusSpan.className = `status ${
-    result.isAvailable ? "available" : "taken"
-  }`;
+  statusSpan.className = `status ${result.isAvailable ? "available" : "taken"}`;
   statusSpan.textContent = result.isAvailable ? "Available" : "Taken";
 
   const actionButton = document.createElement("button");
@@ -213,7 +210,7 @@ function createAvailabilityRow(result) {
       actionButton.dataset.action = "open-create";
       actionButton.dataset.domain = result.domain;
       actionButton.dataset.subdomain = result.subdomain;
-      actionButton.textContent = "Create record";
+      actionButton.textContent = "Create";
     } else {
       actionButton.dataset.target = "login.html";
       actionButton.textContent = "Log in to create";
@@ -255,9 +252,7 @@ async function refreshDomainCount() {
   try {
     const data = await apiFetch("/api/stats/active-domains");
     const value =
-      typeof data?.activeDomains === "number"
-        ? data.activeDomains
-        : "--";
+      typeof data?.activeDomains === "number" ? data.activeDomains : "--";
     counter.textContent = value;
   } catch (error) {
     counter.textContent = "N/A";
@@ -375,7 +370,7 @@ function initializeDashboardPage() {
 
   async function fetchSubdomains() {
     if (!dashboardList) return;
-      dashboardList.innerHTML = "<p>Loading your domains…</p>";
+    dashboardList.innerHTML = "<p>Loading your domains…</p>";
 
     try {
       const data = await apiFetch("/api/subdomains", {
@@ -603,7 +598,11 @@ function initializeLandingPage() {
     createModalBackdrop.addEventListener("click", closeCreateModal);
   }
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && createModal && !createModal.classList.contains("hidden")) {
+    if (
+      event.key === "Escape" &&
+      createModal &&
+      !createModal.classList.contains("hidden")
+    ) {
       closeCreateModal();
     }
   });
