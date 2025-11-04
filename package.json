@@ -20,8 +20,11 @@
   "dependencies": {
     "@fastify/static": "^8.2.0",
     "axios": "^1.12.2",
+    "bcrypt": "^6.0.0",
     "dotenv": "^17.2.3",
-    "fastify": "^5.6.1"
+    "fastify": "^5.6.1",
+    "fastify-jwt": "^4.1.3",
+    "fastify-mysql": "^2.1.0"
   },
   "devDependencies": {
     "pino-pretty": "^13.1.2"
