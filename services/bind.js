@@ -11,7 +11,7 @@ function getZoneFilePath(domain) {
   return config.bind.zoneFilePath(domain);
 }
 
-// BIND9 리로드
+// Reload BIND9
 async function reloadBind(domain, zoneFilePath) {
   try {
     await exec("named-checkconf");
@@ -24,7 +24,7 @@ async function reloadBind(domain, zoneFilePath) {
 }
 
 /**
- * Serial 번호 관리
+ * Manage zone file serial number
  */
 async function incrementSerial(zoneFilePath) {
   let fileContent = await fs.readFile(zoneFilePath, "utf8");
@@ -45,7 +45,7 @@ async function incrementSerial(zoneFilePath) {
 }
 
 /**
- * 서브도메인 존재여부 확인
+ * Check if a subdomain A record exists
  */
 async function findDnsRecord(subdomain, domain) {
   const zoneFilePath = getZoneFilePath(domain);
@@ -55,25 +55,25 @@ async function findDnsRecord(subdomain, domain) {
 }
 
 /**
- * A 레코드 추가
+ * Add a new A record
  */
 async function createDnsRecord(subdomain, ip, domain) {
   const zoneFilePath = getZoneFilePath(domain);
   const newRecord = `\n${subdomain}    IN      A       ${ip}`;
 
-  // 1. A 레코드 추가
+  // 1. Append A record entry
   await fs.appendFile(zoneFilePath, newRecord);
 
-  // 2. Serial 번호 증가
+  // 2. Increment serial number
   await incrementSerial(zoneFilePath);
 
-  // 3. BIND9 리로드
+  // 3. Reload BIND9
   await reloadBind(domain, zoneFilePath);
   return { name: `${subdomain}.${domain}`, content: ip };
 }
 
 /**
- * 기존 A 레코드의 IP 수정
+ * Update an existing A record IP
  */
 async function updateDnsRecord(subdomain, newIp, domain) {
   const zoneFilePath = getZoneFilePath(domain);
@@ -84,20 +84,20 @@ async function updateDnsRecord(subdomain, newIp, domain) {
     throw new Error("Subdomain A record not found in zone file.");
   }
 
-  // 1. IP 주소 변경
+  // 1. Update IP address
   fileContent = fileContent.replace(regex, `$1${newIp}`);
   await fs.writeFile(zoneFilePath, fileContent);
 
-  // 2. Serial 번호 증가
+  // 2. Increment serial number
   await incrementSerial(zoneFilePath);
 
-  // 3. BIND9 리로드
+  // 3. Reload BIND9
   await reloadBind(domain, zoneFilePath);
   return { name: `${subdomain}.${domain}`, content: newIp };
 }
 
 /**
- * 기존 A 레코드 삭제
+ * Remove an existing A record
  */
 async function deleteDnsRecord(subdomain, domain) {
   const zoneFilePath = getZoneFilePath(domain);
@@ -108,31 +108,16 @@ async function deleteDnsRecord(subdomain, domain) {
     throw new Error("Subdomain A record not found in zone file.");
   }
 
-  // 1. A 레코드 라인 삭제
+  // 1. Remove A record line
   fileContent = fileContent.replace(regex, "");
   await fs.writeFile(zoneFilePath, fileContent);
 
-  // 2. Serial 번호 증가
+  // 2. Increment serial number
   await incrementSerial(zoneFilePath);
 
-  // 3. BIND9 리로드
+  // 3. Reload BIND9
   await reloadBind(domain, zoneFilePath);
   return { name: `${subdomain}.${domain}` };
-}
-
-/**
- * 도메인 개수 조회
- */
-async function countManagedSubdomains() {
-  const domains = ["sitey.one", "sitey.my"];
-  let total = 0;
-  for (const domain of domains) {
-    const zoneFilePath = getZoneFilePath(domain);
-    const data = await fs.readFile(zoneFilePath, "utf8");
-    const count = (data.match(/IN\s+A/g) || []).length;
-    total += count > 4 ? count - 4 : 0;
-  }
-  return total;
 }
 
 module.exports = {
@@ -140,5 +125,4 @@ module.exports = {
   createDnsRecord,
   updateDnsRecord,
   deleteDnsRecord,
-  countManagedSubdomains,
 };
