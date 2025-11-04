@@ -205,14 +205,20 @@ function createAvailabilityRow(result) {
   actionButton.className = "primary-button small";
 
   const isLoggedIn = Boolean(getAuthToken());
-  if (isLoggedIn) {
-    actionButton.dataset.action = "open-create";
-    actionButton.dataset.domain = result.domain;
-    actionButton.dataset.subdomain = result.subdomain;
-    actionButton.textContent = "Create domain";
+  if (result.isAvailable) {
+    if (isLoggedIn) {
+      actionButton.dataset.action = "open-create";
+      actionButton.dataset.domain = result.domain;
+      actionButton.dataset.subdomain = result.subdomain;
+      actionButton.textContent = "Create domain";
+    } else {
+      actionButton.dataset.target = "login.html";
+      actionButton.textContent = "Create domain";
+    }
   } else {
-    actionButton.dataset.target = "login.html";
-    actionButton.textContent = "Create domain";
+    actionButton.textContent = "Unavailable";
+    actionButton.disabled = true;
+    actionButton.tabIndex = -1;
   }
 
   row.appendChild(nameSpan);
