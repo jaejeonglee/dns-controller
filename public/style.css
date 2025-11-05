@@ -189,6 +189,28 @@ input {
   color: var(--text-color);
 }
 
+.input-select {
+  width: 100%;
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.98rem;
+  padding: 14px;
+  color: var(--text-color);
+  cursor: pointer;
+  outline: none;
+}
+
+.input-select:focus {
+  outline: none;
+}
+
+.field-helper {
+  margin: 8px 0 0;
+  font-size: 0.9rem;
+  color: rgba(28, 35, 48, 0.65);
+}
+
 .domain-suffix {
   padding-right: 14px;
   color: rgba(29, 35, 48, 0.6);
@@ -507,6 +529,14 @@ input {
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+
+.dashboard-item-domain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .dashboard-item .domain-name {
@@ -515,7 +545,26 @@ input {
   color: rgba(28, 35, 48, 0.9);
 }
 
-.dashboard-item .ip-address {
+.record-type-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(28, 45, 74, 0.1);
+  color: rgba(28, 45, 74, 0.85);
+}
+
+.record-type-badge.type-cname {
+  background: rgba(64, 106, 255, 0.1);
+  color: rgba(49, 89, 214, 0.9);
+}
+
+.dashboard-item .record-value {
   font-family: "Inter", sans-serif;
   font-size: 0.9rem;
   color: rgba(29, 35, 48, 0.68);
@@ -871,6 +920,20 @@ input {
 
   .dashboard-item-header {
     align-items: flex-start;
+  }
+
+  .dashboard-item-title {
+    align-items: flex-start;
+  }
+
+  .dashboard-item-domain {
+    flex-direction: column;
+    gap: 6px;
+    align-items: flex-start;
+  }
+
+  .dashboard-item .record-value {
+    align-self: flex-start;
   }
 
   .dashboard-item-actions {

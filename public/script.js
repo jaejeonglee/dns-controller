@@ -1,6 +1,8 @@
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const IPV4_REGEX =
   /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+const HOSTNAME_REGEX =
+  /^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z0-9-]{2,63}\.?$/i;
 
 function getAuthToken() {
   return localStorage.getItem("token");
@@ -104,6 +106,69 @@ function logoutAndRedirect(target = "index.html") {
   localStorage.removeItem("token");
   window.location.href = target;
 }
+
+function normalizeRecordType(type = "A") {
+  const upper = String(type || "A").trim().toUpperCase();
+  return upper === "CNAME" ? "CNAME" : "A";
+}
+
+function sanitizeHostname(value) {
+  return String(value || "").trim().toLowerCase().replace(/\.$/, "");
+}
+
+function validateRecordValue(recordType, value, context = {}) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    return { valid: false, message: "Enter a record value." };
+  }
+
+  if (recordType === "A") {
+    if (!IPV4_REGEX.test(trimmed)) {
+      return {
+        valid: false,
+        message: "Use a valid IPv4 address (e.g. 203.0.113.10).",
+      };
+    }
+    return { valid: true, value: trimmed };
+  }
+
+  const target = sanitizeHostname(trimmed);
+  if (!HOSTNAME_REGEX.test(target)) {
+    return {
+      valid: false,
+      message: "Use a valid hostname (e.g. app.example.com).",
+    };
+  }
+
+  if (context?.subdomain && context?.domain) {
+    const full = `${context.subdomain}.${context.domain}`.toLowerCase();
+    if (target === full.replace(/\.$/, "")) {
+      return {
+        valid: false,
+        message: "CNAME target cannot point to itself.",
+      };
+    }
+  }
+
+  return { valid: true, value: target };
+}
+
+const RECORD_TYPE_UI = {
+  A: {
+    label: "A record (IPv4)",
+    placeholder: "e.g. 203.0.113.10",
+    helper: "Maps this domain to an IPv4 address.",
+    inputMode: "decimal",
+    detailLabel: "IPv4 address",
+  },
+  CNAME: {
+    label: "CNAME target",
+    placeholder: "e.g. app.example.com",
+    helper: "Points this domain to another hostname.",
+    inputMode: "url",
+    detailLabel: "Canonical hostname",
+  },
+};
 
 function renderFooter() {
   const container = document.getElementById("footer");
@@ -358,6 +423,11 @@ function initializeDashboardPage() {
     wrapper.className = "dashboard-item";
     wrapper.dataset.subdomain = item.subdomain;
     wrapper.dataset.domain = item.domain_name;
+    const recordType = normalizeRecordType(item.record_type || item.recordType);
+    const recordConfig = RECORD_TYPE_UI[recordType] || RECORD_TYPE_UI.A;
+    const recordValue =
+      item.record_value ?? item.recordValue ?? item.ip ?? "";
+    wrapper.dataset.recordType = recordType;
 
     const header = document.createElement("button");
     header.type = "button";
@@ -371,12 +441,21 @@ function initializeDashboardPage() {
     domainName.className = "domain-name";
     domainName.textContent = `${item.subdomain}.${item.domain_name}`;
 
-    const ipAddress = document.createElement("span");
-    ipAddress.className = "ip-address";
-    ipAddress.textContent = item.ip;
+    const typeBadge = document.createElement("span");
+    typeBadge.className = `record-type-badge type-${recordType.toLowerCase()}`;
+    typeBadge.textContent = recordType;
 
-    headerContent.appendChild(domainName);
-    headerContent.appendChild(ipAddress);
+    const domainGroup = document.createElement("div");
+    domainGroup.className = "dashboard-item-domain";
+    domainGroup.appendChild(domainName);
+    domainGroup.appendChild(typeBadge);
+
+    const valueDisplay = document.createElement("span");
+    valueDisplay.className = "record-value";
+    valueDisplay.textContent = recordValue;
+
+    headerContent.appendChild(domainGroup);
+    headerContent.appendChild(valueDisplay);
 
     const icon = document.createElement("span");
     icon.className = "dashboard-item-chevron";
@@ -392,22 +471,24 @@ function initializeDashboardPage() {
     const field = document.createElement("div");
     field.className = "dashboard-item-field";
 
-    const ipLabel = document.createElement("label");
-    const inputId = `dashboard-ip-${index}`;
-    ipLabel.setAttribute("for", inputId);
-    ipLabel.textContent = "IPv4 address";
+    const valueLabel = document.createElement("label");
+    const inputId = `dashboard-record-${index}`;
+    valueLabel.setAttribute("for", inputId);
+    valueLabel.textContent = recordConfig.detailLabel;
 
-    const ipInput = document.createElement("input");
-    ipInput.type = "text";
-    ipInput.id = inputId;
-    ipInput.className = "dashboard-ip-input";
-    ipInput.value = item.ip || "";
-    ipInput.placeholder = "203.0.113.10";
-    ipInput.autocomplete = "off";
-    ipInput.inputMode = "decimal";
+    const valueInput = document.createElement("input");
+    valueInput.type = "text";
+    valueInput.id = inputId;
+    valueInput.className = "dashboard-record-input";
+    valueInput.value = recordValue;
+    valueInput.placeholder = recordConfig.placeholder;
+    valueInput.autocomplete = "off";
+    valueInput.autocapitalize = "none";
+    valueInput.spellcheck = false;
+    valueInput.inputMode = recordConfig.inputMode;
 
-    field.appendChild(ipLabel);
-    field.appendChild(ipInput);
+    field.appendChild(valueLabel);
+    field.appendChild(valueInput);
 
     const actions = document.createElement("div");
     actions.className = "dashboard-item-actions";
@@ -450,7 +531,7 @@ function initializeDashboardPage() {
     itemElement.classList.toggle("expanded", shouldExpand);
 
     if (shouldExpand) {
-      const input = detail.querySelector(".dashboard-ip-input");
+      const input = detail.querySelector(".dashboard-record-input");
       requestAnimationFrame(() => {
         input?.focus();
       });
@@ -495,16 +576,24 @@ function initializeDashboardPage() {
 
     const subdomain = item.dataset.subdomain;
     const domain = item.dataset.domain;
-    const ipInput = item.querySelector(".dashboard-ip-input");
-    const newIp = ipInput?.value.trim();
+    const recordType = normalizeRecordType(item.dataset.recordType);
+    const valueInput = item.querySelector(".dashboard-record-input");
+    const newValue = valueInput?.value;
 
-    if (!subdomain || !domain || !ipInput) return;
-    if (!newIp || !IPV4_REGEX.test(newIp)) {
-      showMessage("Enter a valid IPv4 address before saving.", "error");
-      ipInput.focus();
-      ipInput.select();
+    if (!subdomain || !domain || !valueInput) return;
+
+    const validation = validateRecordValue(recordType, newValue, {
+      subdomain,
+      domain,
+    });
+    if (!validation.valid) {
+      showMessage(validation.message, "error");
+      valueInput.focus();
+      valueInput.select?.();
       return;
     }
+    const recordValue = validation.value;
+    valueInput.value = recordValue;
 
     setButtonLoading(button, "Updating…");
     try {
@@ -513,14 +602,19 @@ function initializeDashboardPage() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: { ip: newIp, domain },
+        body: { value: recordValue, domain },
       });
 
-      showMessage(`Domain ${subdomain}.${domain} updated successfully.`, "success");
+      showMessage(
+        `${recordType} record for ${subdomain}.${domain} updated successfully.`,
+        "success"
+      );
 
-      const ipDisplay = item.querySelector(".dashboard-item-header .ip-address");
-      if (ipDisplay) {
-        ipDisplay.textContent = newIp;
+      const valueDisplay = item.querySelector(
+        ".dashboard-item-header .record-value"
+      );
+      if (valueDisplay) {
+        valueDisplay.textContent = recordValue;
       }
     } catch (error) {
       showMessage(error.message, "error");
@@ -537,10 +631,11 @@ function initializeDashboardPage() {
 
     const subdomain = item.dataset.subdomain;
     const domain = item.dataset.domain;
+    const recordType = normalizeRecordType(item.dataset.recordType);
     if (!subdomain || !domain) return;
 
     const confirmed = window.confirm(
-      `Delete domain ${subdomain}.${domain}? This cannot be undone.`
+      `Delete ${recordType} record for ${subdomain}.${domain}? This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -610,37 +705,66 @@ function initializeLandingPage() {
   const createModal = document.getElementById("create-modal");
   const createModalDomain = document.getElementById("create-modal-domain");
   const createModalForm = document.getElementById("create-modal-form");
-  const createModalIp = document.getElementById("create-modal-ip");
+  const createModalType = document.getElementById("create-modal-type");
+  const createModalValue = document.getElementById("create-modal-value");
+  const createModalValueLabel = document.getElementById(
+    "create-modal-value-label"
+  );
+  const createModalHelper = document.getElementById("create-modal-helper");
   const createModalSubmit = document.getElementById("create-modal-submit");
   const createModalClose = document.getElementById("create-modal-close");
   const createModalBackdrop = document.querySelector(
     "#create-modal [data-modal-close]"
   );
 
+  function applyCreateModalType(type) {
+    const config = RECORD_TYPE_UI[type] || RECORD_TYPE_UI.A;
+    if (createModalValueLabel) {
+      createModalValueLabel.textContent = config.label;
+    }
+    if (createModalValue) {
+      createModalValue.placeholder = config.placeholder;
+      createModalValue.setAttribute("inputmode", config.inputMode);
+    }
+    if (createModalHelper) {
+      createModalHelper.textContent = config.helper;
+    }
+  }
+
   let activeCreateContext = null;
+  let currentCreateRecordType = "A";
 
   const openCreateModal = (context) => {
-    if (!createModal || !createModalDomain || !createModalIp) {
+    if (!createModal || !createModalDomain || !createModalValue) {
       return;
     }
     activeCreateContext = context;
     createModalDomain.textContent = `${context.subdomain}.${context.domain}`;
-    createModalIp.value = "";
+    const initialType = "A";
+    if (createModalType) {
+      createModalType.value = initialType;
+    }
+    applyCreateModalType(initialType);
+    if (createModalValue) {
+      createModalValue.value = "";
+    }
+    currentCreateRecordType = initialType;
     setHidden(createModal, false);
     document.body.classList.add("modal-open");
-    setTimeout(() => createModalIp.focus(), 0);
+    setTimeout(() => createModalValue.focus(), 0);
   };
 
   const closeCreateModal = () => {
     if (!createModal) return;
     activeCreateContext = null;
+    currentCreateRecordType = "A";
     setHidden(createModal, true);
     document.body.classList.remove("modal-open");
   };
 
   resultsContainer.addEventListener("click", (event) => {
     const button = event.target.closest("button");
-    if (!button) return;
+    if (!button || button.disabled) return;
 
     if (button.dataset.action === "open-create") {
       const domain = button.dataset.domain;
@@ -665,6 +789,18 @@ function initializeLandingPage() {
       window.location.href = targetUrl;
     }
   });
+
+  if (createModalType) {
+    createModalType.addEventListener("change", () => {
+      const type = normalizeRecordType(createModalType.value);
+      applyCreateModalType(type);
+      if (type !== currentCreateRecordType && createModalValue) {
+        createModalValue.value = "";
+      }
+      currentCreateRecordType = type;
+      createModalValue?.focus();
+    });
+  }
 
   if (createModalClose) {
     createModalClose.addEventListener("click", closeCreateModal);
@@ -694,12 +830,19 @@ function initializeLandingPage() {
         return;
       }
 
-      const ip = (createModalIp?.value || "").trim();
-      if (!IPV4_REGEX.test(ip)) {
-        showMessage("Enter a valid IPv4 address (e.g. 203.0.113.10).", "error");
-        createModalIp?.focus();
+      const recordType = normalizeRecordType(createModalType?.value || currentCreateRecordType);
+      const validation = validateRecordValue(
+        recordType,
+        createModalValue?.value,
+        activeCreateContext
+      );
+      if (!validation.valid) {
+        showMessage(validation.message, "error");
+        createModalValue?.focus();
+        createModalValue?.select?.();
         return;
       }
+      const recordValue = validation.value;
 
       setButtonLoading(createModalSubmit, "Creating…");
 
@@ -712,12 +855,13 @@ function initializeLandingPage() {
           body: {
             subdomain: activeCreateContext.subdomain,
             domain: activeCreateContext.domain,
-            ip,
+            recordType,
+            value: recordValue,
           },
         });
 
         showMessage(
-          `Domain ${activeCreateContext.subdomain}.${activeCreateContext.domain} created successfully.`,
+          `${recordType} record for ${activeCreateContext.subdomain}.${activeCreateContext.domain} created successfully.`,
           "success"
         );
 
@@ -726,8 +870,10 @@ function initializeLandingPage() {
         );
         if (createdButton) {
           delete createdButton.dataset.action;
-          createdButton.dataset.target = "dashboard.html";
-          createdButton.textContent = "Manage in dashboard";
+          createdButton.removeAttribute("data-target");
+          createdButton.textContent = "Unavailable";
+          createdButton.disabled = true;
+          createdButton.tabIndex = -1;
           const row = createdButton.closest(".result-row");
           const status = row?.querySelector(".status");
           if (row) {

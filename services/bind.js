@@ -3,6 +3,9 @@ const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const config = require("../configs/index");
 
+const isBindMocked = String(process.env.BIND_FAKE_MODE || "").toLowerCase() ===
+  "true";
+
 // BIND9 zone path
 function getZoneFilePath(domain) {
   if (domain.includes("/") || domain.includes("..")) {
@@ -44,80 +47,178 @@ async function incrementSerial(zoneFilePath) {
   }
 }
 
-/**
- * Check if a subdomain A record exists
- */
-async function findDnsRecord(subdomain, domain) {
-  const zoneFilePath = getZoneFilePath(domain);
-  const data = await fs.readFile(zoneFilePath, "utf8");
-  const regex = new RegExp(`^${subdomain}\\s+IN\\s+A\\s+`, "i");
-  return data.split("\n").some((line) => regex.test(line.trim()));
+function escapeRegex(input) {
+  return input.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeRecordType(recordType = "A") {
+  const upper = String(recordType).trim().toUpperCase();
+  if (!["A", "CNAME"].includes(upper)) {
+    throw new Error(`Unsupported record type: ${recordType}`);
+  }
+  return upper;
+}
+
+function formatRecordValue(recordType, value) {
+  const trimmed = String(value).trim();
+  if (recordType === "CNAME") {
+    if (!trimmed.endsWith(".")) {
+      return `${trimmed}.`;
+    }
+  }
+  return trimmed;
 }
 
 /**
- * Add a new A record
+ * Check if a subdomain record exists (A or CNAME)
  */
-async function createDnsRecord(subdomain, ip, domain) {
-  const zoneFilePath = getZoneFilePath(domain);
-  const newRecord = `\n${subdomain}    IN      A       ${ip}`;
-
-  // 1. Append A record entry
-  await fs.appendFile(zoneFilePath, newRecord);
-
-  // 2. Increment serial number
-  await incrementSerial(zoneFilePath);
-
-  // 3. Reload BIND9
-  await reloadBind(domain, zoneFilePath);
-  return { name: `${subdomain}.${domain}`, content: ip };
-}
-
-/**
- * Update an existing A record IP
- */
-async function updateDnsRecord(subdomain, newIp, domain) {
-  const zoneFilePath = getZoneFilePath(domain);
-  let fileContent = await fs.readFile(zoneFilePath, "utf8");
-  const regex = new RegExp(`^(${subdomain}\\s+IN\\s+A\\s+)(.*)$`, "im");
-
-  if (!regex.test(fileContent)) {
-    throw new Error("Subdomain A record not found in zone file.");
+async function findDnsRecord(subdomain, domain, recordType) {
+  if (isBindMocked) {
+    return false;
   }
 
-  // 1. Update IP address
-  fileContent = fileContent.replace(regex, `$1${newIp}`);
+  const zoneFilePath = getZoneFilePath(domain);
+  let data;
+  try {
+    data = await fs.readFile(zoneFilePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      console.warn(
+        `Zone file not found for ${domain}. Returning available status (set BIND_FAKE_MODE=true to silence this warning).`
+      );
+      return false;
+    }
+    throw error;
+  }
+
+  const escapedName = escapeRegex(subdomain);
+  const typePattern = recordType
+    ? escapeRegex(normalizeRecordType(recordType))
+    : "(?:A|CNAME)";
+  const regex = new RegExp(
+    `^${escapedName}\\s+IN\\s+${typePattern}\\s+`,
+    "im"
+  );
+  return regex.test(data);
+}
+
+/**
+ * Add a new DNS record
+ */
+async function createDnsRecord(subdomain, value, domain, recordType = "A") {
+  const zoneFilePath = getZoneFilePath(domain);
+  const type = normalizeRecordType(recordType);
+  const recordValue = formatRecordValue(type, value);
+  const newRecord = `\n${subdomain}\tIN\t${type}\t${recordValue}`;
+
+  if (isBindMocked) {
+    console.warn(
+      `BIND_FAKE_MODE enabled. Skipping zone file write for ${subdomain}.${domain} (${type}).`
+    );
+    return { name: `${subdomain}.${domain}`, content: recordValue, type };
+  }
+
+  try {
+    await fs.appendFile(zoneFilePath, newRecord);
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+      );
+    }
+    throw error;
+  }
+  await incrementSerial(zoneFilePath);
+  await reloadBind(domain, zoneFilePath);
+
+  return { name: `${subdomain}.${domain}`, content: recordValue, type };
+}
+
+/**
+ * Update an existing DNS record value
+ */
+async function updateDnsRecord(subdomain, newValue, domain, recordType = "A") {
+  const zoneFilePath = getZoneFilePath(domain);
+  const type = normalizeRecordType(recordType);
+  const recordValue = formatRecordValue(type, newValue);
+
+  if (isBindMocked) {
+    console.warn(
+      `BIND_FAKE_MODE enabled. Skipping zone file update for ${subdomain}.${domain} (${type}).`
+    );
+    return { name: `${subdomain}.${domain}`, content: recordValue, type };
+  }
+
+  let fileContent;
+  try {
+    fileContent = await fs.readFile(zoneFilePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+      );
+    }
+    throw error;
+  }
+  const escapedName = escapeRegex(subdomain);
+  const regex = new RegExp(
+    `^(${escapedName}\\s+IN\\s+${type}\\s+)(\\S+.*)$`,
+    "im"
+  );
+
+  if (!regex.test(fileContent)) {
+    throw new Error(`${type} record not found in zone file.`);
+  }
+
+  fileContent = fileContent.replace(regex, `$1${recordValue}`);
   await fs.writeFile(zoneFilePath, fileContent);
-
-  // 2. Increment serial number
   await incrementSerial(zoneFilePath);
-
-  // 3. Reload BIND9
   await reloadBind(domain, zoneFilePath);
-  return { name: `${subdomain}.${domain}`, content: newIp };
+
+  return { name: `${subdomain}.${domain}`, content: recordValue, type };
 }
 
 /**
- * Remove an existing A record
+ * Remove an existing DNS record
  */
-async function deleteDnsRecord(subdomain, domain) {
+async function deleteDnsRecord(subdomain, domain, recordType = "A") {
   const zoneFilePath = getZoneFilePath(domain);
-  let fileContent = await fs.readFile(zoneFilePath, "utf8");
-  const regex = new RegExp(`^${subdomain}\\s+IN\\s+A\\s+.*\\n?`, "im");
+  const type = normalizeRecordType(recordType);
 
-  if (!regex.test(fileContent)) {
-    throw new Error("Subdomain A record not found in zone file.");
+  if (isBindMocked) {
+    console.warn(
+      `BIND_FAKE_MODE enabled. Skipping zone file delete for ${subdomain}.${domain} (${type}).`
+    );
+    return { name: `${subdomain}.${domain}`, type };
   }
 
-  // 1. Remove A record line
+  let fileContent;
+  try {
+    fileContent = await fs.readFile(zoneFilePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error(
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+      );
+    }
+    throw error;
+  }
+  const escapedName = escapeRegex(subdomain);
+  const regex = new RegExp(
+    `^${escapedName}\\s+IN\\s+${type}\\s+.*\\n?`,
+    "im"
+  );
+
+  if (!regex.test(fileContent)) {
+    throw new Error(`${type} record not found in zone file.`);
+  }
+
   fileContent = fileContent.replace(regex, "");
   await fs.writeFile(zoneFilePath, fileContent);
-
-  // 2. Increment serial number
   await incrementSerial(zoneFilePath);
-
-  // 3. Reload BIND9
   await reloadBind(domain, zoneFilePath);
-  return { name: `${subdomain}.${domain}` };
+
+  return { name: `${subdomain}.${domain}`, type };
 }
 
 module.exports = {
@@ -125,4 +226,5 @@ module.exports = {
   createDnsRecord,
   updateDnsRecord,
   deleteDnsRecord,
+  normalizeRecordType,
 };
