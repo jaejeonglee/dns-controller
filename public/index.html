@@ -7,6 +7,8 @@
       name="google-adsense-account"
       content="ca-pub-4214732111289465"
     />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="favicon.svg" />
     <title>Sitey - free domain</title>
     <meta
       name="description"
@@ -18,8 +20,6 @@
     />
     <meta name="author" content="Subdomain Service" />
     <meta name="theme-color" content="#1d2d6b" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
   </head>
@@ -135,7 +135,26 @@
             <strong id="create-modal-domain"></strong>
           </p>
           <form id="create-modal-form" novalidate>
-            <label for="create-modal-type" class="form-label">Record type</label>
+            <div class="field-label">
+              <label for="create-modal-type" class="form-label">Record type</label>
+              <button
+                type="button"
+                class="tooltip-toggle"
+                id="create-modal-type-info"
+                aria-label="Learn about record types"
+                aria-expanded="false"
+                aria-controls="create-modal-type-tooltip"
+              >
+                <span aria-hidden="true">i</span>
+              </button>
+              <div
+                class="tooltip-bubble"
+                id="create-modal-type-tooltip"
+                role="tooltip"
+              >
+                Choose how this domain should resolve.
+              </div>
+            </div>
             <div class="input-group">
               <select id="create-modal-type" class="input-select">
                 <option value="A">A (IPv4)</option>
