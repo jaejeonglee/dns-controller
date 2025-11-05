@@ -12,6 +12,8 @@ module.exports = {
   },
   bind: {
     zoneFilePath: (domain) => `${process.env.BIND_DB_PATH}/db.${domain}`,
+    devMode:
+      String(process.env.BIND_DEV_MODE || "").trim().toLowerCase() === "true",
   },
   server: {
     port: process.env.PORT || 3000,

@@ -3,8 +3,7 @@ const util = require("util");
 const exec = util.promisify(require("child_process").exec);
 const config = require("../configs/index");
 
-const isBindMocked = String(process.env.BIND_FAKE_MODE || "").toLowerCase() ===
-  "true";
+const isBindDevMode = Boolean(config.bind.devMode);
 
 // BIND9 zone path
 function getZoneFilePath(domain) {
@@ -73,7 +72,7 @@ function formatRecordValue(recordType, value) {
  * Check if a subdomain record exists (A or CNAME)
  */
 async function findDnsRecord(subdomain, domain, recordType) {
-  if (isBindMocked) {
+  if (isBindDevMode) {
     return false;
   }
 
@@ -84,7 +83,7 @@ async function findDnsRecord(subdomain, domain, recordType) {
   } catch (error) {
     if (error.code === "ENOENT") {
       console.warn(
-        `Zone file not found for ${domain}. Returning available status (set BIND_FAKE_MODE=true to silence this warning).`
+        `Zone file not found for ${domain}. Returning available status (set BIND_DEV_MODE=true to silence this warning).`
       );
       return false;
     }
@@ -111,9 +110,9 @@ async function createDnsRecord(subdomain, value, domain, recordType = "A") {
   const recordValue = formatRecordValue(type, value);
   const newRecord = `\n${subdomain}\tIN\t${type}\t${recordValue}`;
 
-  if (isBindMocked) {
+  if (isBindDevMode) {
     console.warn(
-      `BIND_FAKE_MODE enabled. Skipping zone file write for ${subdomain}.${domain} (${type}).`
+      `BIND_DEV_MODE enabled. Skipping zone file write for ${subdomain}.${domain} (${type}).`
     );
     return { name: `${subdomain}.${domain}`, content: recordValue, type };
   }
@@ -123,7 +122,7 @@ async function createDnsRecord(subdomain, value, domain, recordType = "A") {
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error(
-        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_DEV_MODE=true for local development.`
       );
     }
     throw error;
@@ -142,9 +141,9 @@ async function updateDnsRecord(subdomain, newValue, domain, recordType = "A") {
   const type = normalizeRecordType(recordType);
   const recordValue = formatRecordValue(type, newValue);
 
-  if (isBindMocked) {
+  if (isBindDevMode) {
     console.warn(
-      `BIND_FAKE_MODE enabled. Skipping zone file update for ${subdomain}.${domain} (${type}).`
+      `BIND_DEV_MODE enabled. Skipping zone file update for ${subdomain}.${domain} (${type}).`
     );
     return { name: `${subdomain}.${domain}`, content: recordValue, type };
   }
@@ -155,7 +154,7 @@ async function updateDnsRecord(subdomain, newValue, domain, recordType = "A") {
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error(
-        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_DEV_MODE=true for local development.`
       );
     }
     throw error;
@@ -185,9 +184,9 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
   const zoneFilePath = getZoneFilePath(domain);
   const type = normalizeRecordType(recordType);
 
-  if (isBindMocked) {
+  if (isBindDevMode) {
     console.warn(
-      `BIND_FAKE_MODE enabled. Skipping zone file delete for ${subdomain}.${domain} (${type}).`
+      `BIND_DEV_MODE enabled. Skipping zone file delete for ${subdomain}.${domain} (${type}).`
     );
     return { name: `${subdomain}.${domain}`, type };
   }
@@ -198,7 +197,7 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
   } catch (error) {
     if (error.code === "ENOENT") {
       throw new Error(
-        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_FAKE_MODE=true for local development.`
+        `Zone file not found at ${zoneFilePath}. Create the file or enable BIND_DEV_MODE=true for local development.`
       );
     }
     throw error;
