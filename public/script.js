@@ -160,6 +160,9 @@ const RECORD_TYPE_UI = {
     helper: "Maps this domain to an IPv4 address.",
     inputMode: "decimal",
     detailLabel: "IPv4 address",
+    tooltip:
+      "The A record maps this domain to a specific IPv4 address so browsers know where to connect.",
+    tooltipLabel: "Learn about A records",
   },
   CNAME: {
     label: "CNAME target",
@@ -167,6 +170,9 @@ const RECORD_TYPE_UI = {
     helper: "Points this domain to another hostname.",
     inputMode: "url",
     detailLabel: "Canonical hostname",
+    tooltip:
+      "The CNAME record aliases this domain to another hostname. The target must already resolve to the right service.",
+    tooltipLabel: "Learn about CNAME records",
   },
 };
 
@@ -605,10 +611,8 @@ function initializeDashboardPage() {
         body: { value: recordValue, domain },
       });
 
-      showMessage(
-        `${recordType} record for ${subdomain}.${domain} updated successfully.`,
-        "success"
-      );
+      const successMessage = `${recordType} record for ${subdomain}.${domain} updated successfully.`;
+      showMessage(successMessage, "success");
 
       const valueDisplay = item.querySelector(
         ".dashboard-item-header .record-value"
@@ -649,7 +653,8 @@ function initializeDashboardPage() {
         body: { domain },
       });
 
-      showMessage(`Domain ${subdomain}.${domain} deleted successfully.`, "success");
+      const successMessage = `${recordType} record for ${subdomain}.${domain} deleted successfully.`;
+      showMessage(successMessage, "success");
       await fetchSubdomains();
       refreshDomainCount();
     } catch (error) {
@@ -711,14 +716,37 @@ function initializeLandingPage() {
     "create-modal-value-label"
   );
   const createModalHelper = document.getElementById("create-modal-helper");
+  const createModalTypeInfoBtn = document.getElementById(
+    "create-modal-type-info"
+  );
+  const createModalTypeTooltip = document.getElementById(
+    "create-modal-type-tooltip"
+  );
   const createModalSubmit = document.getElementById("create-modal-submit");
   const createModalClose = document.getElementById("create-modal-close");
   const createModalBackdrop = document.querySelector(
     "#create-modal [data-modal-close]"
   );
 
+  let isTypeTooltipOpen = false;
+
+  function openTypeTooltip() {
+    if (!createModalTypeInfoBtn || !createModalTypeTooltip) return;
+    createModalTypeTooltip.classList.add("show");
+    createModalTypeInfoBtn.setAttribute("aria-expanded", "true");
+    isTypeTooltipOpen = true;
+  }
+
+  function closeTypeTooltip() {
+    if (!createModalTypeInfoBtn || !createModalTypeTooltip) return;
+    createModalTypeTooltip.classList.remove("show");
+    createModalTypeInfoBtn.setAttribute("aria-expanded", "false");
+    isTypeTooltipOpen = false;
+  }
+
   function applyCreateModalType(type) {
     const config = RECORD_TYPE_UI[type] || RECORD_TYPE_UI.A;
+    closeTypeTooltip();
     if (createModalValueLabel) {
       createModalValueLabel.textContent = config.label;
     }
@@ -728,6 +756,14 @@ function initializeLandingPage() {
     }
     if (createModalHelper) {
       createModalHelper.textContent = config.helper;
+    }
+    if (createModalTypeTooltip && typeof config.tooltip === "string") {
+      createModalTypeTooltip.textContent = config.tooltip;
+    }
+    if (createModalTypeInfoBtn) {
+      const ariaLabel = config.tooltipLabel || `Learn about ${type} records`;
+      createModalTypeInfoBtn.setAttribute("aria-label", ariaLabel);
+      createModalTypeInfoBtn.setAttribute("title", ariaLabel);
     }
   }
 
@@ -749,6 +785,7 @@ function initializeLandingPage() {
       createModalValue.value = "";
     }
     currentCreateRecordType = initialType;
+    closeTypeTooltip();
     setHidden(createModal, false);
     document.body.classList.add("modal-open");
     setTimeout(() => createModalValue.focus(), 0);
@@ -758,6 +795,7 @@ function initializeLandingPage() {
     if (!createModal) return;
     activeCreateContext = null;
     currentCreateRecordType = "A";
+    closeTypeTooltip();
     setHidden(createModal, true);
     document.body.classList.remove("modal-open");
   };
@@ -790,6 +828,29 @@ function initializeLandingPage() {
     }
   });
 
+  if (createModalTypeInfoBtn) {
+    createModalTypeInfoBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isTypeTooltipOpen) {
+        closeTypeTooltip();
+      } else {
+        openTypeTooltip();
+      }
+    });
+  }
+
+  document.addEventListener("click", (event) => {
+    if (!isTypeTooltipOpen) return;
+    if (
+      createModalTypeInfoBtn?.contains(event.target) ||
+      createModalTypeTooltip?.contains(event.target)
+    ) {
+      return;
+    }
+    closeTypeTooltip();
+  });
+
   if (createModalType) {
     createModalType.addEventListener("change", () => {
       const type = normalizeRecordType(createModalType.value);
@@ -809,12 +870,13 @@ function initializeLandingPage() {
     createModalBackdrop.addEventListener("click", closeCreateModal);
   }
   document.addEventListener("keydown", (event) => {
-    if (
-      event.key === "Escape" &&
-      createModal &&
-      !createModal.classList.contains("hidden")
-    ) {
-      closeCreateModal();
+    if (event.key === "Escape") {
+      if (isTypeTooltipOpen) {
+        closeTypeTooltip();
+      }
+      if (createModal && !createModal.classList.contains("hidden")) {
+        closeCreateModal();
+      }
     }
   });
 
@@ -860,10 +922,8 @@ function initializeLandingPage() {
           },
         });
 
-        showMessage(
-          `${recordType} record for ${activeCreateContext.subdomain}.${activeCreateContext.domain} created successfully.`,
-          "success"
-        );
+        const successMessage = `${recordType} record for ${activeCreateContext.subdomain}.${activeCreateContext.domain} created successfully.`;
+        showMessage(successMessage, "success");
 
         const createdButton = resultsContainer.querySelector(
           `button[data-domain="${activeCreateContext.domain}"][data-subdomain="${activeCreateContext.subdomain}"]`
