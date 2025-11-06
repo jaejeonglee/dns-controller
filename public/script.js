@@ -98,6 +98,46 @@ function clearChildren(element) {
   }
 }
 
+let loaderElement = null;
+let loaderCount = 0;
+
+function ensureLoader() {
+  if (!loaderElement) {
+    loaderElement = document.createElement("div");
+    loaderElement.className = "loader-overlay";
+    loaderElement.setAttribute("role", "status");
+    loaderElement.setAttribute("aria-live", "polite");
+
+    const spinner = document.createElement("div");
+    spinner.className = "loader-spinner";
+    spinner.setAttribute("aria-hidden", "true");
+
+    const srText = document.createElement("span");
+    srText.className = "sr-only";
+    srText.textContent = "Loading";
+
+    loaderElement.append(spinner, srText);
+    document.body.appendChild(loaderElement);
+  }
+
+  return loaderElement;
+}
+
+function showLoader() {
+  const element = ensureLoader();
+  loaderCount += 1;
+  element.classList.add("show");
+}
+
+function hideLoader() {
+  if (loaderCount > 0) {
+    loaderCount -= 1;
+  }
+  if (loaderCount === 0 && loaderElement) {
+    loaderElement.classList.remove("show");
+  }
+}
+
 function formatDomainList(domains = []) {
   return domains.join(", ");
 }
@@ -222,7 +262,7 @@ function renderNavbar(activePage = "home") {
     : [{ type: "link", key: "login", href: "login.html", label: "Log in" }];
 
   let html =
-    '<nav class="site-nav" aria-label="Primary"><div class="nav-left"><a href="index.html" class="nav-logo" aria-label="Sitey Home"><img src="sitey_logo.png" alt="sitey.one logo" /><span class="nav-brand">SITEY</span></a></div><div class="nav-center">';
+    '<nav class="site-nav" aria-label="Primary"><div class="nav-left"><a href="index.html" class="nav-logo" aria-label="Sitey Home"><img src="sitey_logo.png" alt="sitey.one logo" width="28" height="28" decoding="async" fetchpriority="high" /><span class="nav-brand">SITEY</span></a></div><div class="nav-center">';
 
   html += navLinks
     .map(
@@ -545,6 +585,7 @@ function initializeDashboardPage() {
   }
 
   async function fetchSubdomains() {
+    showLoader();
     dashboardList.innerHTML = "<p>Loading your domains…</p>";
 
     try {
@@ -571,6 +612,8 @@ function initializeDashboardPage() {
       showMessage(error.message, "error");
       dashboardList.innerHTML =
         '<p class="error">Could not load your domains.</p>';
+    } finally {
+      hideLoader();
     }
   }
 
@@ -602,6 +645,7 @@ function initializeDashboardPage() {
     valueInput.value = recordValue;
 
     setButtonLoading(button, "Updating…");
+    showLoader();
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "PUT",
@@ -624,6 +668,7 @@ function initializeDashboardPage() {
       showMessage(error.message, "error");
     } finally {
       clearButtonLoading(button);
+      hideLoader();
     }
   }
 
@@ -644,6 +689,7 @@ function initializeDashboardPage() {
     if (!confirmed) return;
 
     setButtonLoading(button, "Deleting…");
+    showLoader();
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "DELETE",
@@ -661,6 +707,7 @@ function initializeDashboardPage() {
       showMessage(error.message, "error");
     } finally {
       clearButtonLoading(button);
+      hideLoader();
     }
   }
 
@@ -907,6 +954,7 @@ function initializeLandingPage() {
       const recordValue = validation.value;
 
       setButtonLoading(createModalSubmit, "Creating…");
+      showLoader();
 
       try {
         await apiFetch("/api/subdomains", {
@@ -953,6 +1001,7 @@ function initializeLandingPage() {
         showMessage(error.message, "error");
       } finally {
         clearButtonLoading(createModalSubmit);
+        hideLoader();
       }
     });
   }
@@ -975,6 +1024,7 @@ function initializeLandingPage() {
     }
 
     setButtonLoading(checkBtn, "Checking…");
+    showLoader();
     clearChildren(resultsContainer);
     setHidden(resultsContainer, true);
 
@@ -1002,6 +1052,7 @@ function initializeLandingPage() {
       showMessage(error.message, "error");
     } finally {
       clearButtonLoading(checkBtn);
+      hideLoader();
     }
   });
 }
