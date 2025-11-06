@@ -9,8 +9,21 @@ const HOSTNAME_REGEX =
 
 const isValidSubdomain = (name) => SUBDOMAIN_REGEX.test(name);
 
-// ⭐️ Load the managed domain list at startup (kept as a simple constant for now)
-const MANAGED_DOMAINS = ["sitey.one", "sitey.my"];
+function normalizeDomainName(name = "") {
+  return String(name).trim().toLowerCase();
+}
+
+async function getManagedDomains(fastify) {
+  const [rows] = await fastify.mysql.execute(
+    "SELECT id, domain_name FROM managed_domains WHERE is_active = 1"
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    domain: row.domain_name,
+    normalized: normalizeDomainName(row.domain_name),
+  }));
+}
 
 function normalizeRecordType(recordType = "A") {
   return bindService.normalizeRecordType(recordType);
@@ -58,7 +71,10 @@ async function domainRoutes(fastify, options) {
   // GET /api/managed-domains
   fastify.get("/managed-domains", async (request, reply) => {
     try {
-      return reply.code(200).send({ domains: MANAGED_DOMAINS });
+      const managedDomains = await getManagedDomains(fastify);
+      return reply
+        .code(200)
+        .send({ domains: managedDomains.map((item) => item.domain) });
     } catch (error) {
       fastify.log.error(error, "Failed to load managed domains");
       return reply.code(500).send({ error: "Error loading domains" });
@@ -89,16 +105,23 @@ async function domainRoutes(fastify, options) {
     }
 
     try {
+      const managedDomains = await getManagedDomains(fastify);
+      if (!managedDomains.length) {
+        return reply
+          .code(503)
+          .send({ error: "No managed domains are configured." });
+      }
+
       const results = await Promise.all(
-        MANAGED_DOMAINS.map(async (domain) => {
+        managedDomains.map(async ({ id: domainId, domain }) => {
           const isTakenInBind = await bindService.findDnsRecord(
             subdomain,
             domain
           );
 
           const [rows] = await fastify.mysql.execute(
-            "SELECT 1 FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id WHERE s.subdomain = ? AND m.domain_name = ? LIMIT 1",
-            [subdomain, domain]
+            "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id = ? LIMIT 1",
+            [subdomain, domainId]
           );
           const isTakenInDb = rows.length > 0;
 
@@ -164,12 +187,7 @@ async function domainRoutes(fastify, options) {
       const userId = request.user.id; // ⭐️ Authenticated user ID
       const recordType = normalizeRecordType(rawRecordType);
 
-      if (
-        !subdomain ||
-        !rawValue ||
-        !domainName ||
-        !MANAGED_DOMAINS.includes(domainName)
-      ) {
+      if (!subdomain || !rawValue || !domainName) {
         return reply
           .code(400)
           .send({
@@ -180,9 +198,20 @@ async function domainRoutes(fastify, options) {
         return reply.code(400).send({ error: "Invalid domain format" });
       }
 
+      const managedDomains = await getManagedDomains(fastify);
+      const domainEntry = managedDomains.find(
+        (item) => item.normalized === domainName
+      );
+
+      if (!domainEntry) {
+        return reply
+          .code(400)
+          .send({ error: "Requested domain is not managed by this service." });
+      }
+
       const validation = validateRecordValue(recordType, rawValue, {
         subdomain,
-        domain: domainName,
+        domain: domainEntry.domain,
       });
       if (!validation.valid) {
         return reply.code(400).send({ error: validation.message });
@@ -194,28 +223,21 @@ async function domainRoutes(fastify, options) {
         // (Check for duplicates)
         const isTakenInBind = await bindService.findDnsRecord(
           subdomain,
-          domainName
+          domainEntry.domain
         );
         const [rows] = await connection.execute(
-          "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id IN (SELECT id FROM managed_domains WHERE domain_name = ?)",
-          [subdomain, domainName]
+          "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id = ? LIMIT 1",
+          [subdomain, domainEntry.id]
         );
         if (isTakenInBind || rows.length > 0) {
           return reply.code(409).send({ error: "Domain is already in use." });
         }
 
-        // (Fetch managed domain ID)
-        const [domainRows] = await connection.execute(
-          "SELECT id FROM managed_domains WHERE domain_name = ?",
-          [domainName]
-        );
-        const domainId = domainRows[0].id;
-
         // (Create record in BIND9)
         const newRecord = await bindService.createDnsRecord(
           subdomain,
           recordValue,
-          domainName,
+          domainEntry.domain,
           recordType
         );
         fastify.log.info(`New subdomain created in BIND: ${newRecord.name}`);
@@ -223,7 +245,7 @@ async function domainRoutes(fastify, options) {
         // (Insert record into DB)
         await connection.execute(
           "INSERT INTO subdomains (user_id, domain_id, subdomain, record_value, record_type) VALUES (?, ?, ?, ?, ?)",
-          [userId, domainId, subdomain, recordValue, recordType]
+          [userId, domainEntry.id, subdomain, recordValue, recordType]
         );
 
         return reply.code(201).send({
@@ -256,17 +278,28 @@ async function domainRoutes(fastify, options) {
       const userId = request.user.id;
       const domainName = (domain || "").trim().toLowerCase();
 
-      if (!rawValue || !domainName || !MANAGED_DOMAINS.includes(domainName)) {
+      if (!rawValue || !domainName) {
         return reply
           .code(400)
           .send({ error: "Record value and domain are required" });
       }
 
       try {
+        const managedDomains = await getManagedDomains(fastify);
+        const domainEntry = managedDomains.find(
+          (item) => item.normalized === domainName
+        );
+
+        if (!domainEntry) {
+          return reply
+            .code(400)
+            .send({ error: "Requested domain is not managed by this service." });
+        }
+
         // (Verify ownership)
         const [rows] = await fastify.mysql.execute(
-          "SELECT s.id, s.record_type FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id WHERE s.subdomain = ? AND m.domain_name = ? AND s.user_id = ?",
-          [subdomain, domainName, userId]
+          "SELECT s.id, s.record_type FROM subdomains s WHERE s.subdomain = ? AND s.domain_id = ? AND s.user_id = ?",
+          [subdomain, domainEntry.id, userId]
         );
         const record = rows[0];
 
@@ -279,7 +312,7 @@ async function domainRoutes(fastify, options) {
         const recordType = normalizeRecordType(record.record_type);
         const validation = validateRecordValue(recordType, rawValue, {
           subdomain,
-          domain: domainName,
+          domain: domainEntry.domain,
         });
         if (!validation.valid) {
           return reply.code(400).send({ error: validation.message });
@@ -290,7 +323,7 @@ async function domainRoutes(fastify, options) {
         await bindService.updateDnsRecord(
           subdomain,
           recordValue,
-          domainName,
+          domainEntry.domain,
           recordType
         );
 
@@ -301,7 +334,7 @@ async function domainRoutes(fastify, options) {
         );
 
         fastify.log.info(
-          `Record updated by user ${userId}: ${subdomain}.${domainName} (${recordType})`
+          `Record updated by user ${userId}: ${subdomain}.${domainEntry.domain} (${recordType})`
         );
         return reply.code(200).send({
           success: true,
@@ -329,15 +362,26 @@ async function domainRoutes(fastify, options) {
       const userId = request.user.id;
       const domainName = (domain || "").trim().toLowerCase();
 
-      if (!domainName || !MANAGED_DOMAINS.includes(domainName)) {
+      if (!domainName) {
         return reply.code(400).send({ error: "domain is required" });
       }
 
       try {
+        const managedDomains = await getManagedDomains(fastify);
+        const domainEntry = managedDomains.find(
+          (item) => item.normalized === domainName
+        );
+
+        if (!domainEntry) {
+          return reply
+            .code(400)
+            .send({ error: "Requested domain is not managed by this service." });
+        }
+
         // (Verify ownership)
         const [rows] = await fastify.mysql.execute(
-          "SELECT s.id, s.record_type FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id WHERE s.subdomain = ? AND m.domain_name = ? AND s.user_id = ?",
-          [subdomain, domainName, userId]
+          "SELECT s.id, s.record_type FROM subdomains s WHERE s.subdomain = ? AND s.domain_id = ? AND s.user_id = ?",
+          [subdomain, domainEntry.id, userId]
         );
         const record = rows[0];
 
@@ -350,7 +394,11 @@ async function domainRoutes(fastify, options) {
         const recordType = normalizeRecordType(record.record_type);
 
         // (Delete record from BIND9)
-        await bindService.deleteDnsRecord(subdomain, domainName, recordType);
+        await bindService.deleteDnsRecord(
+          subdomain,
+          domainEntry.domain,
+          recordType
+        );
 
         // (Delete record from DB)
         await fastify.mysql.execute("DELETE FROM subdomains WHERE id = ?", [
@@ -358,14 +406,12 @@ async function domainRoutes(fastify, options) {
         ]);
 
         fastify.log.info(
-          `Record deleted by user ${userId}: ${subdomain}.${domainName} (${recordType})`
+          `Record deleted by user ${userId}: ${subdomain}.${domainEntry.domain} (${recordType})`
         );
-        return reply
-          .code(200)
-          .send({
-            success: true,
-            message: "Domain record deleted successfully.",
-          });
+        return reply.code(200).send({
+          success: true,
+          message: "Domain record deleted successfully.",
+        });
       } catch (error) {
         fastify.log.error(error, "Failed to delete domain");
         return reply
