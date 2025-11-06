@@ -438,11 +438,10 @@ function initializeSignupPage() {
     loadingLabel: "Creating account…",
     onSuccess: (data) => {
       const message =
-        data?.message || "Account created successfully. Redirecting…";
+        data?.message ||
+        "Sign-up successful. Please check your email to verify your account.";
       showMessage(message, "success");
-      setTimeout(() => {
-        window.location.href = "login.html";
-      }, 1200);
+      form.reset();
     },
   });
 }

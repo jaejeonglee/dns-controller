@@ -112,10 +112,7 @@ async function findDnsRecord(subdomain, domain, recordType) {
   const typePattern = recordType
     ? escapeRegex(normalizeRecordType(recordType))
     : "(?:A|CNAME)";
-  const regex = new RegExp(
-    `^${escapedName}\\s+IN\\s+${typePattern}\\s+`,
-    "im"
-  );
+  const regex = new RegExp(`^${escapedName}\\s+IN\\s+${typePattern}\\s+`, "im");
   return regex.test(data);
 }
 
