@@ -727,6 +727,10 @@ input {
   border-top: 1px solid rgba(28, 45, 74, 0.08);
 }
 
+.dashboard-item-detail[hidden] {
+  display: none;
+}
+
 .dashboard-item-field {
   display: flex;
   flex-direction: column;

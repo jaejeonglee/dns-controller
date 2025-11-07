@@ -474,10 +474,11 @@ function initializeDashboardPage() {
       item.record_value ?? item.recordValue ?? item.ip ?? "";
     wrapper.dataset.recordType = recordType;
 
-    const header = document.createElement("button");
-    header.type = "button";
+    const header = document.createElement("div");
     header.className = "dashboard-item-header";
     header.setAttribute("aria-expanded", "false");
+    header.setAttribute("role", "button");
+    header.tabIndex = 0;
 
     const headerContent = document.createElement("div");
     headerContent.className = "dashboard-item-title";
@@ -730,6 +731,21 @@ function initializeDashboardPage() {
     if (deleteButton) {
       handleDelete(deleteButton);
     }
+  });
+
+  dashboardList.addEventListener("keydown", (event) => {
+    if (
+      event.key !== "Enter" &&
+      event.key !== " " &&
+      event.key !== "Spacebar"
+    ) {
+      return;
+    }
+    const header = event.target.closest(".dashboard-item-header");
+    if (!header) return;
+    event.preventDefault();
+    const item = header.closest(".dashboard-item");
+    toggleDashboardItem(item);
   });
 }
 
