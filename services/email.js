@@ -1,59 +1,30 @@
-const nodemailer = require("nodemailer");
+const { google } = require("googleapis");
 const config = require("../configs/index");
 
-let transporter;
+let gmailClient;
 
-function buildTransporter() {
+function ensureGmailConfig() {
   const emailConfig = config.email || {};
-  const { service, transport = {} } = emailConfig;
-  const { host, port, secure, auth, tlsRejectUnauthorized } = transport;
+  const gmail = emailConfig.gmail || {};
+  const { clientId, clientSecret, redirectUri, refreshToken, user } = gmail;
 
-  if (!auth?.user || !auth?.pass) {
+  if (!clientId || !clientSecret || !redirectUri || !refreshToken) {
     throw new Error(
-      "SMTP credentials are not configured. Please set SMTP_USER and SMTP_PASS."
+      "Gmail API credentials are not configured. Please set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REDIRECT_URI, and GMAIL_REFRESH_TOKEN."
     );
   }
 
-  if (service) {
-    const options = {
-      service,
-      auth,
-    };
-    if (typeof tlsRejectUnauthorized === "boolean") {
-      options.tls = { rejectUnauthorized: tlsRejectUnauthorized };
-    } else {
-      options.tls = { rejectUnauthorized: false };
-    }
-    return nodemailer.createTransport(options);
-  }
-
-  if (!host) {
-    throw new Error(
-      "SMTP_HOST is not configured. Either provide EMAIL_SERVICE or SMTP_HOST."
-    );
-  }
-
-  const transporterOptions = {
-    host,
-    port: port || 587,
-    secure: secure ?? false,
-    auth,
-  };
-
-  if (typeof tlsRejectUnauthorized === "boolean") {
-    transporterOptions.tls = {
-      rejectUnauthorized: tlsRejectUnauthorized,
-    };
-  }
-
-  return nodemailer.createTransport(transporterOptions);
+  return { clientId, clientSecret, redirectUri, refreshToken, user };
 }
 
-function getTransporter() {
-  if (!transporter) {
-    transporter = buildTransporter();
+function ensureFromAddress(defaultUser) {
+  const from = config.email?.from || defaultUser;
+  if (!from) {
+    throw new Error(
+      "EMAIL_FROM or GMAIL_SENDER must be configured to send verification emails."
+    );
   }
-  return transporter;
+  return from;
 }
 
 function ensureVerificationUrl() {
@@ -66,33 +37,52 @@ function ensureVerificationUrl() {
   return url;
 }
 
-function ensureFromAddress() {
-  const from = config.email?.from;
-  if (!from) {
-    throw new Error("EMAIL_FROM is not configured.");
+function getGmailClient() {
+  if (gmailClient) {
+    return gmailClient;
   }
-  return from;
+
+  const { clientId, clientSecret, redirectUri, refreshToken } = ensureGmailConfig();
+  const oauth2Client = new google.auth.OAuth2(
+    clientId,
+    clientSecret,
+    redirectUri
+  );
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  gmailClient = google.gmail({ version: "v1", auth: oauth2Client });
+  return gmailClient;
+}
+
+function buildRawMessage({ from, to, subject, html }) {
+  const messageParts = [
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/html; charset=utf-8",
+    "",
+    html,
+  ];
+
+  const message = messageParts.join("\r\n");
+  return Buffer.from(message)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
 }
 
 async function sendVerificationEmail(to, token) {
-  const transporterInstance = getTransporter();
+  const gmail = getGmailClient();
+  const { user } = ensureGmailConfig();
+  const from = ensureFromAddress(user);
   const verificationBaseUrl = ensureVerificationUrl();
-  const from = ensureFromAddress();
 
   const verificationLink = `${verificationBaseUrl}${
     verificationBaseUrl.includes("?") ? "&" : "?"
   }token=${encodeURIComponent(token)}`;
 
   const subject = "Verify your Sitey account";
-  const text = [
-    "Welcome to Sitey!",
-    "",
-    "Please confirm your email address by clicking the link below:",
-    verificationLink,
-    "",
-    "If you did not request this email, you can safely ignore it.",
-  ].join("\n");
-
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1d2330;">
       <h2 style="color: #1c2d4a;">Welcome to Sitey!</h2>
@@ -110,12 +100,13 @@ async function sendVerificationEmail(to, token) {
     </div>
   `;
 
-  await transporterInstance.sendMail({
-    from,
-    to,
-    subject,
-    text,
-    html,
+  const raw = buildRawMessage({ from, to, subject, html });
+
+  await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      raw,
+    },
   });
 }
 
