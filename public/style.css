@@ -39,7 +39,7 @@ body.dark-theme .site-nav {
 body.dark-theme .site-nav a,
 body.dark-theme .site-nav button {
   color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.1);
+  background: transparent;
 }
 
 body.dark-theme .site-nav a:hover,
@@ -383,7 +383,7 @@ body {
   padding: 6px 14px;
   border-radius: 999px;
   border: none;
-  background: rgba(255, 255, 255, 0.08);
+  background: transparent;
   color: rgba(255, 255, 255, 0.85);
   font-size: 0.94rem;
   font-weight: 500;
