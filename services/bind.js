@@ -240,17 +240,10 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
   });
 }
 
-async function createOrUpdateTxtRecord(
-  subdomain,
-  domain,
-  hostPrefix,
-  txtValue
-) {
+async function createOrUpdateTxtRecord(domain, hostPrefix, txtValue) {
   return withDomainLock(domain, async () => {
     const zoneFilePath = getZoneFilePath(domain);
-    const recordName = hostPrefix
-      ? `${hostPrefix}.${subdomain}`
-      : subdomain;
+    const recordName = hostPrefix; // dig TXT _vercel.sitey.one 시 value list가 추출되어야하기 때문에 subdomain이 아닌 hostPrefix 기준으로 레코드 생성
     const recordContent = `"${txtValue}"`;
     const newRecordLine = `${recordName}\tIN\tTXT\t${recordContent}`;
 
@@ -298,9 +291,7 @@ async function createOrUpdateTxtRecord(
 async function deleteTxtRecord(subdomain, domain, hostPrefix) {
   return withDomainLock(domain, async () => {
     const zoneFilePath = getZoneFilePath(domain);
-    const recordName = hostPrefix
-      ? `${hostPrefix}.${subdomain}`
-      : subdomain;
+    const recordName = hostPrefix ? `${hostPrefix}.${subdomain}` : subdomain;
 
     if (isBindDevMode) {
       console.warn(
@@ -321,10 +312,7 @@ async function deleteTxtRecord(subdomain, domain, hostPrefix) {
     }
 
     const escapedName = escapeRegex(recordName);
-    const regex = new RegExp(
-      `^${escapedName}\\s+IN\\s+TXT\\s+.*\\n?`,
-      "im"
-    );
+    const regex = new RegExp(`^${escapedName}\\s+IN\\s+TXT\\s+.*\\n?`, "im");
 
     if (!regex.test(fileContent)) {
       // Record not found, consider it a success

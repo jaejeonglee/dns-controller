@@ -189,11 +189,9 @@ async function domainRoutes(fastify, options) {
       const recordType = normalizeRecordType(rawRecordType);
 
       if (!subdomain || !rawValue || !domainName) {
-        return reply
-          .code(400)
-          .send({
-            error: "Domain name, record value, and domain are required",
-          });
+        return reply.code(400).send({
+          error: "Domain name, record value, and domain are required",
+        });
       }
       if (!isValidSubdomain(subdomain)) {
         return reply.code(400).send({ error: "Invalid domain format" });
@@ -292,9 +290,9 @@ async function domainRoutes(fastify, options) {
         );
 
         if (!domainEntry) {
-          return reply
-            .code(400)
-            .send({ error: "Requested domain is not managed by this service." });
+          return reply.code(400).send({
+            error: "Requested domain is not managed by this service.",
+          });
         }
 
         // (Verify ownership)
@@ -340,7 +338,6 @@ async function domainRoutes(fastify, options) {
           if (txtValue) {
             // Create or update TXT record
             await bindService.createOrUpdateTxtRecord(
-              subdomain,
               domainEntry.domain,
               hostPrefix,
               txtValue
@@ -403,9 +400,9 @@ async function domainRoutes(fastify, options) {
         );
 
         if (!domainEntry) {
-          return reply
-            .code(400)
-            .send({ error: "Requested domain is not managed by this service." });
+          return reply.code(400).send({
+            error: "Requested domain is not managed by this service.",
+          });
         }
 
         // (Verify ownership)
@@ -478,9 +475,9 @@ async function domainRoutes(fastify, options) {
         );
 
         if (!domainEntry) {
-          return reply
-            .code(400)
-            .send({ error: "Requested domain is not managed by this service." });
+          return reply.code(400).send({
+            error: "Requested domain is not managed by this service.",
+          });
         }
 
         // Verify ownership
@@ -499,7 +496,6 @@ async function domainRoutes(fastify, options) {
 
         // Create/update TXT record in BIND
         await bindService.createOrUpdateTxtRecord(
-          subdomain,
           domainEntry.domain,
           hostPrefix,
           txtValue
