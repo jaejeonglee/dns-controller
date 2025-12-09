@@ -4,6 +4,55 @@ const IPV4_REGEX =
 const HOSTNAME_REGEX =
   /^(?=.{1,253}$)(?!-)(?:[a-z0-9-]{1,63}\.)+[a-z0-9-]{2,63}\.?$/i;
 
+// --- Router and Navigation ---
+
+function navigateTo(path) {
+  history.pushState(null, null, path);
+  router();
+}
+
+async function router() {
+  const routes = {
+    "/": { templateId: "template-home", init: initializeLandingPage, title: "Sitey - free domain" },
+    "/index.html": { templateId: "template-home", init: initializeLandingPage, title: "Sitey - free domain" },
+    "/login": { templateId: "template-login", init: initializeLoginPage, title: "Login - Sitey" },
+    "/signup": { templateId: "template-signup", init: initializeSignupPage, title: "Sign Up - Sitey" },
+    "/dashboard": { templateId: "template-dashboard", init: initializeDashboardPage, title: "Dashboard - Sitey" },
+    "/guide": { templateId: "template-guide", init: initializeGuidePage, title: "Guide - Sitey" },
+    "/help": { templateId: "template-help", init: initializeHelpPage, title: "Help - Sitey" },
+  };
+
+  // Normalize path to handle index.html as root
+  let path = window.location.pathname;
+  if (path.endsWith('/index.html')) {
+    path = '/';
+  }
+  
+  const route = routes[path] || routes["/"]; // Default to home
+
+  const appRoot = document.getElementById("app-root");
+  if (!appRoot) return;
+
+  const template = document.getElementById(route.templateId);
+  if (!template) {
+    appRoot.innerHTML = "<h1>Error: Page not found</h1>";
+    return;
+  }
+
+  // Render view
+  appRoot.innerHTML = "";
+  appRoot.appendChild(template.content.cloneNode(true));
+  document.title = route.title;
+
+  // Render common components and initialize page-specific JS
+  renderNavbar(path);
+  renderFooter();
+  route.init();
+}
+
+
+// --- API and Auth ---
+
 function getAuthToken() {
   return localStorage.getItem("token");
 }
@@ -41,6 +90,14 @@ async function apiFetch(url, options = {}) {
     throw new Error(error.message || "Network error, please try again.");
   }
 }
+
+function logoutAndRedirect(target = "/") {
+  localStorage.removeItem("token");
+  navigateTo(target);
+}
+
+
+// --- UI Components and Helpers ---
 
 function showMessage(message, type = "info") {
   const messageBox = document.getElementById("form-message");
@@ -142,11 +199,6 @@ function formatDomainList(domains = []) {
   return domains.join(", ");
 }
 
-function logoutAndRedirect(target = "index.html") {
-  localStorage.removeItem("token");
-  window.location.href = target;
-}
-
 function normalizeRecordType(type = "A") {
   const upper = String(type || "A").trim().toUpperCase();
   return upper === "CNAME" ? "CNAME" : "A";
@@ -230,143 +282,63 @@ function renderFooter() {
   `;
 }
 
-function renderNavbar(activePage = "home") {
-  const container = document.getElementById("navbar");
-  if (!container) return;
+function renderNavbar(currentPath) {
+    const container = document.getElementById("navbar");
+    if (!container) return;
 
-  const token = getAuthToken();
+    const token = getAuthToken();
 
-  const navLinks = [
-    { key: "home", href: "index.html", label: "Home" },
-    { key: "guide", href: "guide.html", label: "Guide" },
-    { key: "help", href: "help.html", label: "Help" },
-  ];
+    const navLinks = [
+        { path: "/", label: "Home" },
+        { path: "/guide", label: "Guide" },
+        { path: "/help", label: "Help" },
+    ];
 
-  if (token) {
-    navLinks.push({
-      key: "dashboard",
-      href: "dashboard.html",
-      label: "My domains",
-    });
-  }
-
-  const authLinks = token
-    ? [
-        {
-          type: "button",
-          key: "logout",
-          label: "Log out",
-          id: "nav-logout-btn",
-        },
-      ]
-    : [{ type: "link", key: "login", href: "login.html", label: "Log in" }];
-
-  let html =
-    '<nav class="site-nav" aria-label="Primary"><div class="nav-left"><a href="index.html" class="nav-logo" aria-label="Sitey Home"><img src="sitey_logo.png" alt="sitey.one logo" width="28" height="28" decoding="async" fetchpriority="high" /><span class="nav-brand">SITEY</span></a></div><div class="nav-center">';
-
-  html += navLinks
-    .map(
-      ({ key, href, label }) =>
-        `<a href="${href}" data-nav="${key}" class="${
-          activePage === key ? "active" : ""
-        }">${label}</a>`
-    )
-    .join("");
-
-  html += '</div><div class="nav-right">';
-
-  authLinks.forEach((link) => {
-    if (link.type === "button") {
-      html += `<button type="button" id="${link.id}" class="nav-auth-btn">${link.label}</button>`;
-    } else {
-      html += `<a href="${link.href}" data-nav="${
-        link.key
-      }" class="nav-auth-btn ${activePage === link.key ? "active" : ""}">${
-        link.label
-      }</a>`;
+    if (token) {
+        navLinks.push({ path: "/dashboard", label: "My domains" });
     }
-  });
 
-  html += "</div></nav>";
-  container.innerHTML = html;
+    const authLink = token
+        ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">Log out</button>`
+        : `<a href="/login" class="nav-auth-btn ${currentPath === '/login' ? 'active' : ''}">Log in</a>`;
 
-  const logoutBtn = container.querySelector("#nav-logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (event) => {
-      event.preventDefault();
-      logoutAndRedirect("index.html");
-    });
-  }
+    let html = `
+        <nav class="site-nav" aria-label="Primary">
+            <div class="nav-left">
+                <a href="/" class="nav-logo" aria-label="Sitey Home">
+                    <img src="sitey_logo.png" alt="sitey.one logo" width="28" height="28" decoding="async" fetchpriority="high" />
+                    <span class="nav-brand">SITEY</span>
+                </a>
+            </div>
+            <div class="nav-center">
+                ${navLinks.map(({ path, label }) => `
+                    <a href="${path}" class="${currentPath === path ? 'active' : ''}">${label}</a>
+                `).join("")}
+            </div>
+            <div class="nav-right">${authLink}</div>
+        </nav>
+    `;
+
+    container.innerHTML = html;
+
+    const logoutBtn = container.querySelector("#nav-logout-btn");
+    if (logoutBtn) {
+        logoutBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            logoutAndRedirect("/");
+        });
+    }
 }
 
-function createAvailabilityRow(result) {
-  const row = document.createElement("div");
-  row.className = `result-row ${result.isAvailable ? "available" : "taken"}`;
 
-  const nameSpan = document.createElement("span");
-  nameSpan.className = "domain-name";
-  nameSpan.textContent = result.fullSubdomain;
+// --- Page Initializers ---
 
-  const statusSpan = document.createElement("span");
-  statusSpan.className = `status ${result.isAvailable ? "available" : "taken"}`;
-  statusSpan.textContent = result.isAvailable ? "Available" : "Taken";
-
-  const actionButton = document.createElement("button");
-  actionButton.type = "button";
-  actionButton.className = "primary-button small";
-
-  const isLoggedIn = Boolean(getAuthToken());
-  if (result.isAvailable) {
-    if (isLoggedIn) {
-      actionButton.dataset.action = "open-create";
-      actionButton.dataset.domain = result.domain;
-      actionButton.dataset.subdomain = result.subdomain;
-      actionButton.textContent = "Create domain";
-    } else {
-      actionButton.dataset.target = "login.html";
-      actionButton.textContent = "Create domain";
-    }
-  } else {
-    actionButton.textContent = "Unavailable";
-    actionButton.disabled = true;
-    actionButton.tabIndex = -1;
-  }
-
-  row.appendChild(nameSpan);
-  row.appendChild(statusSpan);
-  row.appendChild(actionButton);
-
-  return row;
+function initializeGuidePage() {
+  resetMessage();
 }
 
-async function loadManagedDomains() {
-  const target = document.getElementById("domain-list-span");
-  if (!target) return;
-
-  try {
-    const data = await apiFetch("/api/managed-domains");
-    if (Array.isArray(data.domains) && data.domains.length > 0) {
-      target.textContent = formatDomainList(data.domains);
-    } else {
-      target.textContent = "No domains configured";
-    }
-  } catch (error) {
-    target.textContent = "Unavailable";
-  }
-}
-
-async function refreshDomainCount() {
-  const counter = document.getElementById("domain-count-number");
-  if (!counter) return;
-
-  try {
-    const data = await apiFetch("/api/stats/active-domains");
-    const value =
-      typeof data?.activeDomains === "number" ? data.activeDomains : "--";
-    counter.textContent = value;
-  } catch (error) {
-    counter.textContent = "N/A";
-  }
+function initializeHelpPage() {
+  resetMessage();
 }
 
 function setupAuthForm(form, config) {
@@ -407,8 +379,6 @@ function setupAuthForm(form, config) {
 }
 
 function initializeLoginPage() {
-  renderNavbar("login");
-  renderFooter();
   resetMessage();
   const form = document.getElementById("login-form");
 
@@ -420,16 +390,12 @@ function initializeLoginPage() {
         localStorage.setItem("token", data.token);
       }
       showMessage("Login successful! Redirecting…", "success");
-      setTimeout(() => {
-        window.location.href = "index.html";
-      }, 800);
+      setTimeout(() => navigateTo("/dashboard"), 800);
     },
   });
 }
 
 function initializeSignupPage() {
-  renderNavbar("signup");
-  renderFooter();
   resetMessage();
   const form = document.getElementById("signup-form");
 
@@ -451,14 +417,9 @@ function initializeDashboardPage() {
   const token = getAuthToken();
 
   if (!token) {
-    renderNavbar("login");
-    renderFooter();
-    window.location.href = "login.html";
+    navigateTo("/login");
     return;
   }
-
-  renderNavbar("dashboard");
-  renderFooter();
 
   const dashboardList = document.getElementById("dashboard-list");
   if (!dashboardList) return;
@@ -780,9 +741,37 @@ function initializeDashboardPage() {
   });
 }
 
+async function loadManagedDomains() {
+  const target = document.getElementById("domain-list-span");
+  if (!target) return;
+
+  try {
+    const data = await apiFetch("/api/managed-domains");
+    if (Array.isArray(data.domains) && data.domains.length > 0) {
+      target.textContent = formatDomainList(data.domains);
+    } else {
+      target.textContent = "No domains configured";
+    }
+  } catch (error) {
+    target.textContent = "Unavailable";
+  }
+}
+
+async function refreshDomainCount() {
+  const counter = document.getElementById("domain-count-number");
+  if (!counter) return;
+
+  try {
+    const data = await apiFetch("/api/stats/active-domains");
+    const value =
+      typeof data?.activeDomains === "number" ? data.activeDomains : "--";
+    counter.textContent = value;
+  } catch (error) {
+    counter.textContent = "N/A";
+  }
+}
+
 function initializeLandingPage() {
-  renderNavbar("home");
-  renderFooter();
   resetMessage();
   loadManagedDomains();
   refreshDomainCount();
@@ -907,7 +896,7 @@ function initializeLandingPage() {
 
       const token = getAuthToken();
       if (!token) {
-        window.location.href = "login.html";
+        navigateTo("/login");
         return;
       }
 
@@ -917,7 +906,7 @@ function initializeLandingPage() {
 
     const targetUrl = button.dataset.target;
     if (targetUrl) {
-      window.location.href = targetUrl;
+      navigateTo(targetUrl);
     }
   });
 
@@ -981,7 +970,7 @@ function initializeLandingPage() {
       const token = getAuthToken();
       if (!token) {
         closeCreateModal();
-        window.location.href = "login.html";
+        navigateTo("/login");
         return;
       }
 
@@ -1103,27 +1092,22 @@ function initializeLandingPage() {
   });
 }
 
+
+// --- App Entry Point ---
+
 document.addEventListener("DOMContentLoaded", () => {
-  const initializers = [
-    { selector: "#login-form", init: initializeLoginPage },
-    { selector: "#signup-form", init: initializeSignupPage },
-    { selector: "#dashboard-section", init: initializeDashboardPage },
-    { selector: "#subdomain-form", init: initializeLandingPage },
-  ];
-
-  let initialized = false;
-
-  for (const { selector, init } of initializers) {
-    if (document.querySelector(selector)) {
-      init();
-      initialized = true;
-      break;
+  // Handle client-side routing for all internal links
+  document.body.addEventListener("click", (event) => {
+    const link = event.target.closest("a");
+    if (link && link.target !== "_blank" && link.origin === window.location.origin) {
+      event.preventDefault();
+      navigateTo(link.pathname);
     }
-  }
+  });
 
-  if (!initialized) {
-    const active = document.body?.dataset?.page || "home";
-    renderNavbar(active);
-    renderFooter();
-  }
+  // Listen for browser back/forward button clicks
+  window.addEventListener("popstate", router);
+
+  // Initial route
+  router();
 });

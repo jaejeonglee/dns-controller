@@ -28,10 +28,98 @@
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" defer></script>
   </head>
-  <body data-page="home">
+  <body>
     <div class="container">
       <div id="navbar"></div>
+      <main id="app-root"></main>
+      <div id="footer"></div>
+    </div>
 
+    <!-- Modal is a global component, so it lives outside the templates -->
+    <div
+      id="create-modal"
+      class="modal hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-modal-title"
+    >
+      <div class="modal-backdrop" data-modal-close></div>
+      <div class="modal-content">
+        <button
+          type="button"
+          class="modal-close"
+          id="create-modal-close"
+          aria-label="Close create modal"
+        >
+          ×
+        </button>
+        <h2 id="create-modal-title">Create domain</h2>
+        <p class="modal-subtitle">
+          You are about to create
+          <strong id="create-modal-domain"></strong>
+        </p>
+        <form id="create-modal-form" novalidate>
+          <div class="field-label">
+            <label for="create-modal-type" class="form-label"
+              >Record type</label
+            >
+            <button
+              type="button"
+              class="tooltip-toggle"
+              id="create-modal-type-info"
+              aria-label="Learn about record types"
+              aria-expanded="false"
+              aria-controls="create-modal-type-tooltip"
+            >
+              <span aria-hidden="true">i</span>
+            </button>
+            <div
+              class="tooltip-bubble"
+              id="create-modal-type-tooltip"
+              role="tooltip"
+            >
+              Choose how this domain should resolve.
+            </div>
+          </div>
+          <div class="input-group">
+            <select id="create-modal-type" class="input-select">
+              <option value="A">A (IPv4)</option>
+              <option value="CNAME">CNAME</option>
+            </select>
+          </div>
+          <label
+            for="create-modal-value"
+            class="form-label"
+            id="create-modal-value-label"
+            >A record (IPv4)</label
+          >
+          <div class="input-group">
+            <input
+              type="text"
+              id="create-modal-value"
+              placeholder="e.g. 203.0.113.10"
+              required
+              autocomplete="off"
+              spellcheck="false"
+              autocapitalize="none"
+            />
+          </div>
+          <p class="field-helper" id="create-modal-helper">
+            Maps this domain to an IPv4 address.
+          </p>
+          <button
+            type="submit"
+            class="primary-button"
+            id="create-modal-submit"
+          >
+            Create domain
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Page Templates -->
+    <template id="template-home">
       <div class="top-indicators">
         <div
           id="domain-count"
@@ -42,7 +130,6 @@
           Active domains: <span id="domain-count-number">--</span>
         </div>
       </div>
-
       <header>
         <h1>Get your domain</h1>
         <p class="managed-domains-list">
@@ -59,8 +146,7 @@
           Check availability and manage your domains.
         </div>
       </header>
-
-      <main class="flow">
+      <div class="flow">
         <form id="subdomain-form" novalidate>
           <div class="input-group with-button">
             <input
@@ -83,14 +169,12 @@
             </button>
           </div>
         </form>
-
         <div
           id="availability-results"
           class="stack hidden"
           aria-live="polite"
         ></div>
-      </main>
-
+      </div>
       <section id="intro" class="content-section">
         <h2>What We Deliver</h2>
         <p>
@@ -116,90 +200,200 @@
           </li>
         </ul>
       </section>
+    </template>
 
-      <div
-        id="create-modal"
-        class="modal hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="create-modal-title"
-      >
-        <div class="modal-backdrop" data-modal-close></div>
-        <div class="modal-content">
-          <button
-            type="button"
-            class="modal-close"
-            id="create-modal-close"
-            aria-label="Close create modal"
-          >
-            ×
+    <template id="template-login">
+      <header>
+        <h1 id="main-headline">Log In</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="Welcome back! Manage your domains."
+        >
+          Welcome back! Manage your domains.
+        </div>
+      </header>
+      <section class="form-section">
+        <form id="login-form" novalidate>
+          <div class="input-group">
+            <input
+              type="email"
+              id="auth-email"
+              placeholder="Email address"
+              required
+              autocomplete="email"
+            />
+          </div>
+          <div class="input-group">
+            <input
+              type="password"
+              id="auth-password"
+              placeholder="Password"
+              required
+              autocomplete="current-password"
+            />
+          </div>
+          <button type="submit" id="auth-submit-btn" class="primary-button">
+            Log In
           </button>
-          <h2 id="create-modal-title">Create domain</h2>
-          <p class="modal-subtitle">
-            You are about to create
-            <strong id="create-modal-domain"></strong>
-          </p>
-          <form id="create-modal-form" novalidate>
-            <div class="field-label">
-              <label for="create-modal-type" class="form-label"
-                >Record type</label
-              >
-              <button
-                type="button"
-                class="tooltip-toggle"
-                id="create-modal-type-info"
-                aria-label="Learn about record types"
-                aria-expanded="false"
-                aria-controls="create-modal-type-tooltip"
-              >
-                <span aria-hidden="true">i</span>
-              </button>
-              <div
-                class="tooltip-bubble"
-                id="create-modal-type-tooltip"
-                role="tooltip"
-              >
-                Choose how this domain should resolve.
-              </div>
-            </div>
-            <div class="input-group">
-              <select id="create-modal-type" class="input-select">
-                <option value="A">A (IPv4)</option>
-                <option value="CNAME">CNAME</option>
-              </select>
-            </div>
-            <label
-              for="create-modal-value"
-              class="form-label"
-              id="create-modal-value-label"
-              >A record (IPv4)</label
-            >
-            <div class="input-group">
-              <input
-                type="text"
-                id="create-modal-value"
-                placeholder="e.g. 203.0.113.10"
-                required
-                autocomplete="off"
-                spellcheck="false"
-                autocapitalize="none"
-              />
-            </div>
-            <p class="field-helper" id="create-modal-helper">
-              Maps this domain to an IPv4 address.
+          <a class="link-button" href="/signup">Create an account</a>
+        </form>
+      </section>
+    </template>
+
+    <template id="template-signup">
+      <header>
+        <h1 id="main-headline">Create Your Account</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="Sign up to start managing your free domains."
+        >
+          Sign up to start managing your free domains.
+        </div>
+      </header>
+      <section class="form-section">
+        <form id="signup-form" novalidate>
+          <div class="input-group">
+            <input
+              type="email"
+              id="auth-email"
+              placeholder="Email address"
+              required
+              autocomplete="email"
+            />
+          </div>
+          <div class="input-group">
+            <input
+              type="password"
+              id="auth-password"
+              placeholder="Create a password"
+              required
+              autocomplete="new-password"
+            />
+          </div>
+          <button type="submit" id="auth-submit-btn" class="primary-button">
+            Create account
+          </button>
+          <a class="link-button" href="/login">Log in instead</a>
+        </form>
+      </section>
+    </template>
+
+    <template id="template-dashboard">
+      <header>
+        <h1 id="main-headline">My Dashboard</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="Manage your active domains below."
+        >
+          Manage your active domains below.
+        </div>
+      </header>
+      <section id="dashboard-section" class="content-section stack">
+        <h2>My Domains</h2>
+        <div id="dashboard-list" class="dashboard-list-container">
+          <p>Loading your domains...</p>
+        </div>
+      </section>
+    </template>
+
+    <template id="template-guide">
+      <header>
+        <h1>Guide</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="Follow these steps to claim and manage your domain."
+        >
+          Follow these steps to claim and manage your domain.
+        </div>
+      </header>
+      <div class="content-section">
+        <div class="step-cards">
+          <article>
+            <h3>1. Check availability</h3>
+            <p>
+              Enter your preferred domain on the homepage. We validate the
+              format and check every managed domain to confirm whether the name
+              is available.
             </p>
-            <button
-              type="submit"
-              class="primary-button"
-              id="create-modal-submit"
+          </article>
+          <article>
+            <h3>2. Create your record</h3>
+            <p>
+              Create an account, log in, and add the IPv4 address you want to
+              point to. Records are written directly to our nameserver and
+              loaded few minutes later.
+            </p>
+          </article>
+          <article>
+            <h3>3. Manage changes</h3>
+            <p>
+              Visit the dashboard whenever you need to update or delete a
+              domain. Every change keeps your zone files in sync automatically.
+            </p>
+          </article>
+        </div>
+        <p class="tip">
+          Most DNS changes become visible worldwide within 5 minutes. If you
+          need advanced settings, reach out through the Help page.
+        </p>
+      </div>
+    </template>
+
+    <template id="template-help">
+      <header>
+        <h1>Help & Support</h1>
+        <div
+          id="form-message"
+          class="message-box show info"
+          role="status"
+          aria-live="polite"
+          data-default-message="We're here to help with setup, troubleshooting, and feature requests."
+        >
+          We're here to help with setup, troubleshooting, and feature requests.
+        </div>
+      </header>
+      <div class="content-section">
+        <h2>Contact</h2>
+        <p>
+          Need assistance or want to report abuse? Message the team on
+          <a
+            href="https://t.me/+yvrIFDbssJ0wNDJl"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Telegram</a
+          >
+          and include the domain you're working with.
+        </p>
+
+        <div class="support-cta">
+          <h3>Support the project</h3>
+          <p>
+            Every domain is free. If this service helps you ship faster,
+            consider buying the developer a warm cup of coffee.
+          </p>
+          <div class="support-actions">
+            <a
+              class="donate-button"
+              href="https://www.buymeacoffee.com/helpmeup"
+              target="_blank"
+              rel="noopener noreferrer"
+              >❤️ ☕️</a
             >
-              Create domain
-            </button>
-          </form>
+          </div>
         </div>
       </div>
-
-      <div id="footer"></div>
-    </div>
+    </template>
   </body>
 </html>
