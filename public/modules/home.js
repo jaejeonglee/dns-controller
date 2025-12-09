@@ -372,7 +372,7 @@ function createAvailabilityRow(result) {
     button.className = 'primary-button small';
     row.appendChild(button);
 
-    if (result.available) {
+    if (result.isAvailable === true) {
         status.classList.add('available');
         status.textContent = 'Available';
         button.textContent = 'Create';
