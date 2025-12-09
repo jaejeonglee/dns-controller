@@ -38,10 +38,20 @@ fastify.addHook("onResponse", (request, reply, done) => {
   done();
 });
 
-// 3. /api/* requests are handled by routes/index.js
+// 3. Set not-found handler for client-side routing
+fastify.setNotFoundHandler((request, reply) => {
+  // For GET requests that are not API calls, serve index.html
+  if (request.method === 'GET' && !request.url.startsWith('/api')) {
+    return reply.sendFile('index.html');
+  }
+  // For other cases, send a 404
+  reply.code(404).send({ error: 'Not Found' });
+});
+
+// 4. /api/* requests are handled by routes/index.js
 fastify.register(apiRoutes, { prefix: "/api" });
 
-// --- 4. Start server ---
+// --- 5. Start server ---
 const start = async () => {
   try {
     await fastify.listen({
