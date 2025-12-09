@@ -315,7 +315,18 @@ function renderNavbar(currentPath) {
                     <a href="${path}" class="${currentPath === path ? 'active' : ''}">${label}</a>
                 `).join("")}
             </div>
-            <div class="nav-right">${authLink}</div>
+            <div class="nav-right">
+                <button type="button" id="theme-toggle-btn" class="nav-auth-btn" aria-label="Toggle theme">
+                    <span class="sr-only">Toggle theme</span>
+                    <svg id="theme-icon-sun" class="theme-icon" fill="currentColor" viewBox="0 0 20 20" style="display: none;">
+                        <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zm-10.607.707l-.707-.707a1 1 0 00-1.414 1.414l.707.707a1 1 0 001.414-1.414zM3 10a1 1 0 01-1-1V8a1 1 0 112 0v1a1 1 0 01-1 1zm10.607 2.121l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 011.414-1.414zM4 10a1 1 0 01-1-1V8a1 1 0 112 0v1a1 1 0 01-1 1zm-.464 4.95l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM17 9a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zm-5.121.464l-.707-.707a1 1 0 011.414-1.414l.707.707a1 1 0 01-1.414 1.414zM10 15a1 1 0 01-1 1v1a1 1 0 112 0v-1a1 1 0 01-1-1zM10 5a1 1 0 01-1-1V3a1 1 0 112 0v1a1 1 0 01-1 1z"></path>
+                    </svg>
+                    <svg id="theme-icon-moon" class="theme-icon" fill="currentColor" viewBox="0 0 20 20" style="display: none;">
+                        <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path>
+                    </svg>
+                </button>
+                ${authLink}
+            </div>
         </nav>
     `;
 
@@ -328,8 +339,47 @@ function renderNavbar(currentPath) {
             logoutAndRedirect("/");
         });
     }
+
+    const themeToggleBtn = container.querySelector("#theme-toggle-btn");
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener("click", toggleTheme);
+    }
 }
 
+// --- Theme Toggling ---
+function applyTheme(theme) {
+    const body = document.body;
+    const sunIcon = document.getElementById("theme-icon-sun");
+    const moonIcon = document.getElementById("theme-icon-moon");
+
+    if (theme === "dark") {
+        body.classList.add("dark-theme");
+        if (sunIcon) sunIcon.style.display = "none";
+        if (moonIcon) moonIcon.style.display = "inline-block";
+    } else {
+        body.classList.remove("dark-theme");
+        if (sunIcon) sunIcon.style.display = "inline-block";
+        if (moonIcon) moonIcon.style.display = "none";
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = localStorage.getItem("theme");
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    localStorage.setItem("theme", newTheme);
+    applyTheme(newTheme);
+}
+
+function loadInitialTheme() {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+        applyTheme("dark");
+    } else {
+        applyTheme("light");
+    }
+}
 
 // --- Page Initializers ---
 
@@ -1110,4 +1160,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Initial route
   router();
+
+  // Load initial theme
+  loadInitialTheme();
 });
