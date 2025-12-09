@@ -154,9 +154,10 @@ async function domainRoutes(fastify, options) {
 
       try {
         const [rows] = await fastify.mysql.execute(
-          "SELECT s.id, s.subdomain, m.domain_name, s.record_value, s.record_type " +
+          "SELECT s.id, s.subdomain, m.domain_name, s.record_value, s.record_type, t.host_prefix, t.txt_value " +
             "FROM subdomains s " +
             "JOIN managed_domains m ON s.domain_id = m.id " +
+            "LEFT JOIN subdomain_txt_records t ON s.id = t.subdomain_id " +
             "WHERE s.user_id = ? " +
             "ORDER BY m.domain_name, s.subdomain",
           [userId]
@@ -273,7 +274,7 @@ async function domainRoutes(fastify, options) {
     },
     async (request, reply) => {
       const { subdomain: rawSubdomain } = request.params;
-      const { value: rawValue, domain } = request.body || {};
+      const { value: rawValue, domain, txtValue } = request.body || {};
       const subdomain = (rawSubdomain || "").trim().toLowerCase();
       const userId = request.user.id;
       const domainName = (domain || "").trim().toLowerCase();
@@ -332,6 +333,35 @@ async function domainRoutes(fastify, options) {
           "UPDATE subdomains SET record_value = ? WHERE id = ?",
           [recordValue, record.id]
         );
+
+        // Handle TXT record for CNAMEs
+        if (recordType === "CNAME" && typeof txtValue !== "undefined") {
+          const hostPrefix = "_vercel";
+          if (txtValue) {
+            // Create or update TXT record
+            await bindService.createOrUpdateTxtRecord(
+              subdomain,
+              domainEntry.domain,
+              hostPrefix,
+              txtValue
+            );
+            await fastify.mysql.execute(
+              "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
+              [record.id, hostPrefix, txtValue]
+            );
+          } else {
+            // Delete TXT record
+            await bindService.deleteTxtRecord(
+              subdomain,
+              domainEntry.domain,
+              hostPrefix
+            );
+            await fastify.mysql.execute(
+              "DELETE FROM subdomain_txt_records WHERE subdomain_id = ? AND host_prefix = ?",
+              [record.id, hostPrefix]
+            );
+          }
+        }
 
         fastify.log.info(
           `Record updated by user ${userId}: ${subdomain}.${domainEntry.domain} (${recordType})`
@@ -417,6 +447,82 @@ async function domainRoutes(fastify, options) {
         return reply
           .code(500)
           .send({ error: "Server error during domain deletion" });
+      }
+    }
+  );
+
+  // POST /api/subdomains/:subdomain/txt
+  fastify.post(
+    "/subdomains/:subdomain/txt",
+    {
+      preHandler: [fastify.authenticate],
+    },
+    async (request, reply) => {
+      const { subdomain: rawSubdomain } = request.params;
+      const { domain, txtValue } = request.body || {};
+      const subdomain = (rawSubdomain || "").trim().toLowerCase();
+      const userId = request.user.id;
+      const domainName = (domain || "").trim().toLowerCase();
+      const hostPrefix = "_vercel"; // As requested
+
+      if (!domainName || !txtValue) {
+        return reply
+          .code(400)
+          .send({ error: "Domain and TXT value are required" });
+      }
+
+      try {
+        const managedDomains = await getManagedDomains(fastify);
+        const domainEntry = managedDomains.find(
+          (item) => item.normalized === domainName
+        );
+
+        if (!domainEntry) {
+          return reply
+            .code(400)
+            .send({ error: "Requested domain is not managed by this service." });
+        }
+
+        // Verify ownership
+        const [rows] = await fastify.mysql.execute(
+          "SELECT id FROM subdomains WHERE subdomain = ? AND domain_id = ? AND user_id = ?",
+          [subdomain, domainEntry.id, userId]
+        );
+        const record = rows[0];
+
+        if (!record) {
+          return reply.code(404).send({
+            error: "Domain not found or you do not own this record.",
+          });
+        }
+        const subdomainId = record.id;
+
+        // Create/update TXT record in BIND
+        await bindService.createOrUpdateTxtRecord(
+          subdomain,
+          domainEntry.domain,
+          hostPrefix,
+          txtValue
+        );
+
+        // Upsert into the database
+        await fastify.mysql.execute(
+          "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) " +
+            "ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
+          [subdomainId, hostPrefix, txtValue]
+        );
+
+        fastify.log.info(
+          `TXT record updated by user ${userId}: ${hostPrefix}.${subdomain}.${domainEntry.domain}`
+        );
+        return reply
+          .code(200)
+          .send({ success: true, message: "TXT record updated successfully." });
+      } catch (error) {
+        fastify.log.error(error, "Failed to update TXT record");
+        return reply
+          .code(500)
+          .send({ error: "Server error during TXT record update" });
       }
     }
   );

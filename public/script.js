@@ -535,6 +535,31 @@ function initializeDashboardPage() {
 
     field.appendChild(valueLabel);
     field.appendChild(valueInput);
+    detail.appendChild(field);
+
+    if (recordType === "CNAME") {
+      const txtField = document.createElement("div");
+      txtField.className = "dashboard-item-field";
+
+      const txtLabel = document.createElement("label");
+      const txtInputId = `dashboard-txt-${index}`;
+      txtLabel.setAttribute("for", txtInputId);
+      txtLabel.textContent = "Vercel TXT Verification";
+
+      const txtInput = document.createElement("input");
+      txtInput.type = "text";
+      txtInput.id = txtInputId;
+      txtInput.className = "dashboard-txt-input";
+      txtInput.value = item.txt_value || "";
+      txtInput.placeholder = "e.g. vc-domain-verify=...";
+      txtInput.autocomplete = "off";
+      txtInput.autocapitalize = "none";
+      txtInput.spellcheck = false;
+
+      txtField.appendChild(txtLabel);
+      txtField.appendChild(txtInput);
+      detail.appendChild(txtField);
+    }
 
     const actions = document.createElement("div");
     actions.className = "dashboard-item-actions";
@@ -554,7 +579,6 @@ function initializeDashboardPage() {
     actions.appendChild(saveButton);
     actions.appendChild(deleteButton);
 
-    detail.appendChild(field);
     detail.appendChild(actions);
 
     wrapper.appendChild(header);
@@ -644,6 +668,13 @@ function initializeDashboardPage() {
     const recordValue = validation.value;
     valueInput.value = recordValue;
 
+    const body = { value: recordValue, domain };
+
+    if (recordType === "CNAME") {
+      const txtInput = item.querySelector(".dashboard-txt-input");
+      body.txtValue = txtInput ? txtInput.value.trim() : "";
+    }
+
     setButtonLoading(button, "Updating…");
     showLoader();
     try {
@@ -652,7 +683,7 @@ function initializeDashboardPage() {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        body: { value: recordValue, domain },
+        body,
       });
 
       const successMessage = `${recordType} record for ${subdomain}.${domain} updated successfully.`;

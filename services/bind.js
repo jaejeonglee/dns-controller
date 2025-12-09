@@ -240,10 +240,112 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
   });
 }
 
+async function createOrUpdateTxtRecord(
+  subdomain,
+  domain,
+  hostPrefix,
+  txtValue
+) {
+  return withDomainLock(domain, async () => {
+    const zoneFilePath = getZoneFilePath(domain);
+    const recordName = hostPrefix
+      ? `${hostPrefix}.${subdomain}`
+      : subdomain;
+    const recordContent = `"${txtValue}"`;
+    const newRecordLine = `${recordName}\tIN\tTXT\t${recordContent}`;
+
+    if (isBindDevMode) {
+      console.warn(
+        `BIND_DEV_MODE enabled. Skipping TXT record update for ${recordName}.${domain}.`
+      );
+      return { name: `${recordName}.${domain}`, content: txtValue };
+    }
+
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(zoneFilePath, "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        throw new Error(
+          `Zone file not found at ${zoneFilePath}. Enable BIND_DEV_MODE=true for local dev.`
+        );
+      }
+      throw error;
+    }
+
+    const escapedName = escapeRegex(recordName);
+    const regex = new RegExp(
+      `^(${escapedName}\\s+IN\\s+TXT\\s+)(?:".*")$`,
+      "im"
+    );
+
+    if (regex.test(fileContent)) {
+      // Update existing record
+      fileContent = fileContent.replace(regex, `$1${recordContent}`);
+    } else {
+      // Add new record
+      fileContent += `\n${newRecordLine}`;
+    }
+
+    await fs.writeFile(zoneFilePath, fileContent);
+    await incrementSerial(zoneFilePath);
+    await reloadBind(domain, zoneFilePath);
+
+    return { name: `${recordName}.${domain}`, content: txtValue };
+  });
+}
+
+async function deleteTxtRecord(subdomain, domain, hostPrefix) {
+  return withDomainLock(domain, async () => {
+    const zoneFilePath = getZoneFilePath(domain);
+    const recordName = hostPrefix
+      ? `${hostPrefix}.${subdomain}`
+      : subdomain;
+
+    if (isBindDevMode) {
+      console.warn(
+        `BIND_DEV_MODE enabled. Skipping TXT record deletion for ${recordName}.${domain}.`
+      );
+      return { name: `${recordName}.${domain}` };
+    }
+
+    let fileContent;
+    try {
+      fileContent = await fs.readFile(zoneFilePath, "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        // If the file doesn't exist, there's nothing to delete.
+        return { name: `${recordName}.${domain}` };
+      }
+      throw error;
+    }
+
+    const escapedName = escapeRegex(recordName);
+    const regex = new RegExp(
+      `^${escapedName}\\s+IN\\s+TXT\\s+.*\\n?`,
+      "im"
+    );
+
+    if (!regex.test(fileContent)) {
+      // Record not found, consider it a success
+      return { name: `${recordName}.${domain}` };
+    }
+
+    fileContent = fileContent.replace(regex, "");
+    await fs.writeFile(zoneFilePath, fileContent);
+    await incrementSerial(zoneFilePath);
+    await reloadBind(domain, zoneFilePath);
+
+    return { name: `${recordName}.${domain}` };
+  });
+}
+
 module.exports = {
   findDnsRecord,
   createDnsRecord,
   updateDnsRecord,
   deleteDnsRecord,
   normalizeRecordType,
+  createOrUpdateTxtRecord,
+  deleteTxtRecord,
 };
