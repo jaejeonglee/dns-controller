@@ -60,7 +60,7 @@ body.dark-theme .site-nav .nav-logo .nav-brand {
 
 body.dark-theme .top-indicators {
   background: var(--container-bg);
-  border: 1px solid var(--border-color);
+  border: none;
 }
 
 body.dark-theme .domain-indicator,
