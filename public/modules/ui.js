@@ -149,6 +149,10 @@ export function renderNavbar(currentPath) {
                 `).join("")}
             </div>
             <div class="nav-right">
+                <select id="lang-select" class="nav-select">
+                    <option value="en">English</option>
+                    <option value="ko">한국어</option>
+                </select>
                 <button type="button" id="theme-toggle-btn" class="nav-auth-btn" aria-label="Toggle theme">
                     <span class="sr-only">Toggle theme</span>
                     <span id="theme-icon-sun" class="theme-icon" style="display: none;">🌝</span>

@@ -235,6 +235,10 @@ body.dark-theme .dashboard-item-chevron {
   border-bottom: 2px solid var(--muted-color);
 }
 
+body.dark-theme .dashboard-item.expanded .dashboard-item-chevron {
+  transform: rotate(225deg);
+}
+
 body.dark-theme .dashboard-item-detail {
   border-top: 1px solid var(--border-color);
 }
@@ -1101,6 +1105,7 @@ input {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
+  margin-top: 18px;
 }
 
 .dashboard-item-actions .primary-button,
@@ -1685,4 +1690,34 @@ body.modal-open {
 
 .footer-divider {
   color: rgba(255, 255, 255, 0.65);
+}
+.nav-select {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: none;
+  background: transparent; /* Removed background */
+  color: #ffffff;
+  font-size: 0.94rem;
+  font-weight: 500;
+  cursor: pointer;
+  appearance: none; /* Remove default select styling */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  /* Removed background-image and related properties */
+}
+
+.nav-select:hover {
+  background: transparent; /* Removed background */
+  /* box-shadow: 0 12px 18px rgba(12, 27, 43, 0.16); */
+}
+
+body.dark-theme .nav-select {
+  background: transparent; /* Removed background */
+  color: rgba(255, 255, 255, 0.85);
+}
+
+body.dark-theme .nav-select:hover {
+  background: transparent; /* Removed background */
+  color: #ffffff;
+  box-shadow: 0 12px 18px rgba(0, 0, 0, 0.15);
 }
