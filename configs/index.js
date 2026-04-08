@@ -1,5 +1,20 @@
 require("dotenv").config();
 
+const required = ["JWT_SECRET", "DB_USER", "DB_PASSWORD", "DB_DATABASE"];
+const devMode =
+  String(process.env.BIND_DEV_MODE || "").trim().toLowerCase() === "true";
+
+if (!devMode && !process.env.BIND_DB_PATH) {
+  required.push("BIND_DB_PATH");
+}
+
+const missing = required.filter((key) => !process.env[key]);
+if (missing.length > 0) {
+  throw new Error(
+    `Missing required environment variables: ${missing.join(", ")}`
+  );
+}
+
 module.exports = {
   db: {
     host: process.env.DB_HOST || "localhost",
@@ -12,8 +27,7 @@ module.exports = {
   },
   bind: {
     zoneFilePath: (domain) => `${process.env.BIND_DB_PATH}/db.${domain}`,
-    devMode:
-      String(process.env.BIND_DEV_MODE || "").trim().toLowerCase() === "true",
+    devMode,
   },
   email: {
     from: process.env.EMAIL_FROM,

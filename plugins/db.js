@@ -1,6 +1,6 @@
 // plugins/db.js
 const fp = require("fastify-plugin");
-const fastifyMysql = require("fastify-mysql");
+const fastifyMysql = require("@fastify/mysql");
 const config = require("../configs/index");
 
 async function dbConnector(fastify, options) {

@@ -1,12 +1,14 @@
 // plugins/auth.js
 const fp = require("fastify-plugin");
-const fastifyJwt = require("fastify-jwt");
+const fastifyJwt = require("@fastify/jwt");
 const bcrypt = require("bcrypt");
 const config = require("../configs/index");
 
 async function authPlugin(fastify, options) {
   fastify.register(fastifyJwt, {
     secret: config.jwt.secret,
+    sign: { algorithm: "HS256" },
+    verify: { algorithms: ["HS256"] },
   });
 
   fastify.decorate("bcrypt", bcrypt);
@@ -15,7 +17,7 @@ async function authPlugin(fastify, options) {
     try {
       await request.jwtVerify();
     } catch (err) {
-      reply.code(401).send({
+      return reply.code(401).send({
         error: "Unauthorized",
         message: "Authentication token is invalid.",
       });

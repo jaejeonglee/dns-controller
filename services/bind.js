@@ -1,6 +1,6 @@
 const fs = require("fs").promises;
 const util = require("util");
-const exec = util.promisify(require("child_process").exec);
+const execFile = util.promisify(require("child_process").execFile);
 const config = require("../configs/index");
 
 const isBindDevMode = Boolean(config.bind.devMode);
@@ -34,9 +34,9 @@ function getZoneFilePath(domain) {
 // Reload BIND9
 async function reloadBind(domain, zoneFilePath) {
   try {
-    await exec("named-checkconf");
-    await exec(`named-checkzone ${domain} ${zoneFilePath}`);
-    await exec("systemctl reload named");
+    await execFile("named-checkconf", []);
+    await execFile("named-checkzone", [domain, zoneFilePath]);
+    await execFile("systemctl", ["reload", "named"]);
   } catch (error) {
     console.error("BIND reload failed:", error);
     throw new Error("Failed to reload BIND9 service.");

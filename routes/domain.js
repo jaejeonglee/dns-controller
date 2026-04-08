@@ -219,7 +219,7 @@ async function domainRoutes(fastify, options) {
 
       const connection = await fastify.mysql.getConnection();
       try {
-        // (Check for duplicates)
+        // Check for duplicates
         const isTakenInBind = await bindService.findDnsRecord(
           subdomain,
           domainEntry.domain
@@ -232,20 +232,22 @@ async function domainRoutes(fastify, options) {
           return reply.code(409).send({ error: "Domain is already in use." });
         }
 
-        // (Create record in BIND9)
+        // DB first (in transaction), then BIND9
+        await connection.beginTransaction();
+        await connection.execute(
+          "INSERT INTO subdomains (user_id, domain_id, subdomain, record_value, record_type) VALUES (?, ?, ?, ?, ?)",
+          [userId, domainEntry.id, subdomain, recordValue, recordType]
+        );
+
         const newRecord = await bindService.createDnsRecord(
           subdomain,
           recordValue,
           domainEntry.domain,
           recordType
         );
-        fastify.log.info(`New subdomain created in BIND: ${newRecord.name}`);
 
-        // (Insert record into DB)
-        await connection.execute(
-          "INSERT INTO subdomains (user_id, domain_id, subdomain, record_value, record_type) VALUES (?, ?, ?, ?, ?)",
-          [userId, domainEntry.id, subdomain, recordValue, recordType]
-        );
+        await connection.commit();
+        fastify.log.info(`New subdomain created: ${newRecord.name}`);
 
         return reply.code(201).send({
           success: true,
@@ -254,6 +256,11 @@ async function domainRoutes(fastify, options) {
           recordType,
         });
       } catch (error) {
+        try {
+          await connection.rollback();
+        } catch (rbErr) {
+          fastify.log.error(rbErr, "Rollback failed during domain creation");
+        }
         fastify.log.error(error, "Failed to process domain creation");
         return reply
           .code(500)
@@ -283,6 +290,7 @@ async function domainRoutes(fastify, options) {
           .send({ error: "Record value and domain are required" });
       }
 
+      const connection = await fastify.mysql.getConnection();
       try {
         const managedDomains = await getManagedDomains(fastify);
         const domainEntry = managedDomains.find(
@@ -295,8 +303,8 @@ async function domainRoutes(fastify, options) {
           });
         }
 
-        // (Verify ownership)
-        const [rows] = await fastify.mysql.execute(
+        // Verify ownership
+        const [rows] = await connection.execute(
           "SELECT s.id, s.record_type FROM subdomains s WHERE s.subdomain = ? AND s.domain_id = ? AND s.user_id = ?",
           [subdomain, domainEntry.id, userId]
         );
@@ -318,7 +326,29 @@ async function domainRoutes(fastify, options) {
         }
         const recordValue = validation.value;
 
-        // (Update BIND9 record)
+        // DB first (in transaction), then BIND9
+        await connection.beginTransaction();
+        await connection.execute(
+          "UPDATE subdomains SET record_value = ? WHERE id = ?",
+          [recordValue, record.id]
+        );
+
+        if (recordType === "CNAME" && typeof txtValue !== "undefined") {
+          const hostPrefix = "_vercel";
+          if (txtValue) {
+            await connection.execute(
+              "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
+              [record.id, hostPrefix, txtValue]
+            );
+          } else {
+            await connection.execute(
+              "DELETE FROM subdomain_txt_records WHERE subdomain_id = ? AND host_prefix = ?",
+              [record.id, hostPrefix]
+            );
+          }
+        }
+
+        // BIND9 operations
         await bindService.updateDnsRecord(
           subdomain,
           recordValue,
@@ -326,40 +356,24 @@ async function domainRoutes(fastify, options) {
           recordType
         );
 
-        // (Update DB record)
-        await fastify.mysql.execute(
-          "UPDATE subdomains SET record_value = ? WHERE id = ?",
-          [recordValue, record.id]
-        );
-
-        // Handle TXT record for CNAMEs
         if (recordType === "CNAME" && typeof txtValue !== "undefined") {
           const hostPrefix = "_vercel";
           if (txtValue) {
-            // Create or update TXT record
             await bindService.createOrUpdateTxtRecord(
               domainEntry.domain,
               hostPrefix,
               txtValue
             );
-            await fastify.mysql.execute(
-              "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
-              [record.id, hostPrefix, txtValue]
-            );
           } else {
-            // Delete TXT record
             await bindService.deleteTxtRecord(
               subdomain,
               domainEntry.domain,
               hostPrefix
             );
-            await fastify.mysql.execute(
-              "DELETE FROM subdomain_txt_records WHERE subdomain_id = ? AND host_prefix = ?",
-              [record.id, hostPrefix]
-            );
           }
         }
 
+        await connection.commit();
         fastify.log.info(
           `Record updated by user ${userId}: ${subdomain}.${domainEntry.domain} (${recordType})`
         );
@@ -368,10 +382,17 @@ async function domainRoutes(fastify, options) {
           message: "Domain record updated successfully.",
         });
       } catch (error) {
+        try {
+          await connection.rollback();
+        } catch (rbErr) {
+          fastify.log.error(rbErr, "Rollback failed during domain update");
+        }
         fastify.log.error(error, "Failed to update domain");
         return reply
           .code(500)
           .send({ error: "Server error during domain update" });
+      } finally {
+        connection.release();
       }
     }
   );
@@ -393,6 +414,7 @@ async function domainRoutes(fastify, options) {
         return reply.code(400).send({ error: "domain is required" });
       }
 
+      const connection = await fastify.mysql.getConnection();
       try {
         const managedDomains = await getManagedDomains(fastify);
         const domainEntry = managedDomains.find(
@@ -405,8 +427,8 @@ async function domainRoutes(fastify, options) {
           });
         }
 
-        // (Verify ownership)
-        const [rows] = await fastify.mysql.execute(
+        // Verify ownership
+        const [rows] = await connection.execute(
           "SELECT s.id, s.record_type FROM subdomains s WHERE s.subdomain = ? AND s.domain_id = ? AND s.user_id = ?",
           [subdomain, domainEntry.id, userId]
         );
@@ -420,18 +442,38 @@ async function domainRoutes(fastify, options) {
 
         const recordType = normalizeRecordType(record.record_type);
 
-        // (Delete record from BIND9)
+        // Get associated TXT records before deleting
+        const [txtRows] = await connection.execute(
+          "SELECT host_prefix FROM subdomain_txt_records WHERE subdomain_id = ?",
+          [record.id]
+        );
+
+        // DB first (in transaction), then BIND9
+        await connection.beginTransaction();
+        await connection.execute(
+          "DELETE FROM subdomain_txt_records WHERE subdomain_id = ?",
+          [record.id]
+        );
+        await connection.execute("DELETE FROM subdomains WHERE id = ?", [
+          record.id,
+        ]);
+
+        // BIND9 operations
         await bindService.deleteDnsRecord(
           subdomain,
           domainEntry.domain,
           recordType
         );
 
-        // (Delete record from DB)
-        await fastify.mysql.execute("DELETE FROM subdomains WHERE id = ?", [
-          record.id,
-        ]);
+        for (const txt of txtRows) {
+          await bindService.deleteTxtRecord(
+            subdomain,
+            domainEntry.domain,
+            txt.host_prefix
+          );
+        }
 
+        await connection.commit();
         fastify.log.info(
           `Record deleted by user ${userId}: ${subdomain}.${domainEntry.domain} (${recordType})`
         );
@@ -440,10 +482,17 @@ async function domainRoutes(fastify, options) {
           message: "Domain record deleted successfully.",
         });
       } catch (error) {
+        try {
+          await connection.rollback();
+        } catch (rbErr) {
+          fastify.log.error(rbErr, "Rollback failed during domain deletion");
+        }
         fastify.log.error(error, "Failed to delete domain");
         return reply
           .code(500)
           .send({ error: "Server error during domain deletion" });
+      } finally {
+        connection.release();
       }
     }
   );
