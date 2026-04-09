@@ -1,5 +1,6 @@
 import { getAuthToken, logoutAndRedirect } from "./api.js";
 import { toggleTheme } from "./theme.js";
+import { t } from "./i18n.js";
 
 /* ============================================
    Toast Notifications
@@ -138,18 +139,18 @@ export function renderNavbar(currentPath) {
   const token = getAuthToken();
 
   const navLinks = [
-    { path: "/", label: "Home" },
-    { path: "/guide", label: "Guide" },
-    { path: "/help", label: "Help" },
+    { path: "/", label: t("nav.home") },
+    { path: "/guide", label: t("nav.guide") },
+    { path: "/help", label: t("nav.help") },
   ];
 
   if (token) {
-    navLinks.push({ path: "/dashboard", label: "My domains" });
+    navLinks.push({ path: "/dashboard", label: t("nav.dashboard") });
   }
 
   const authLink = token
-    ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">Log out</button>`
-    : `<a href="/login" class="nav-auth-btn ${currentPath === "/login" ? "active" : ""}">Log in</a>`;
+    ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">${t("nav.logout")}</button>`
+    : `<a href="/login" class="nav-auth-btn ${currentPath === "/login" ? "active" : ""}">${t("nav.login")}</a>`;
 
   container.innerHTML = `
     <nav class="site-nav" aria-label="Primary">

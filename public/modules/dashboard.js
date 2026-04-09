@@ -4,6 +4,7 @@ import { showMessage, setButtonLoading, clearButtonLoading, showLoader, hideLoad
 import { normalizeRecordType, validateRecordValue } from "./util.js";
 import { RECORD_TYPE_UI } from "./constants.js";
 import { refreshDomainCount } from "./home.js";
+import { t } from "./i18n.js";
 
 export function initializeDashboardPage() {
   resetMessage();
@@ -98,7 +99,7 @@ export function initializeDashboardPage() {
       const txtLabel = document.createElement("label");
       const txtInputId = `dashboard-txt-${index}`;
       txtLabel.setAttribute("for", txtInputId);
-      txtLabel.textContent = "Vercel TXT Verification";
+      txtLabel.textContent = t("dashboard.txt_label");
 
       const txtInput = document.createElement("input");
       txtInput.type = "text";
@@ -122,13 +123,13 @@ export function initializeDashboardPage() {
     saveButton.type = "button";
     saveButton.className = "primary-button";
     saveButton.dataset.action = "update";
-    saveButton.textContent = "Save changes";
+    saveButton.textContent = t("dashboard.save");
 
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "danger-button";
     deleteButton.dataset.action = "delete";
-    deleteButton.textContent = "Remove domain";
+    deleteButton.textContent = t("dashboard.delete");
 
     actions.appendChild(saveButton);
     actions.appendChild(deleteButton);
@@ -164,7 +165,7 @@ export function initializeDashboardPage() {
 
   async function fetchSubdomains() {
     showLoader();
-    dashboardList.innerHTML = "<p>Loading your domains…</p>";
+    dashboardList.innerHTML = `<p>${t("dashboard.loading")}</p>`;
 
     try {
       const data = await apiFetch("/api/subdomains", {
@@ -176,7 +177,7 @@ export function initializeDashboardPage() {
 
       if (!items.length) {
         dashboardList.innerHTML =
-          "<p>You have not created any domains yet.</p>";
+          `<p>${t("dashboard.empty")}</p>`;
         return;
       }
 
@@ -189,7 +190,7 @@ export function initializeDashboardPage() {
     } catch (error) {
       showMessage(error.message, "error");
       dashboardList.innerHTML =
-        '<p class="error">Could not load your domains.</p>';
+        `<p class="error">${t("dashboard.load_error")}</p>`;
     } finally {
       hideLoader();
     }
@@ -240,7 +241,7 @@ export function initializeDashboardPage() {
         body,
       });
 
-      const successMessage = `${recordType} record for ${subdomain}.${domain} updated successfully.`;
+      const successMessage = t("dashboard.update_success", { type: recordType, domain: `${subdomain}.${domain}` });
       showMessage(successMessage, "success");
 
       const valueDisplay = item.querySelector(
@@ -269,7 +270,7 @@ export function initializeDashboardPage() {
     if (!subdomain || !domain) return;
 
     const confirmed = window.confirm(
-      `Delete ${recordType} record for ${subdomain}.${domain}? This cannot be undone.`
+      t("dashboard.delete_confirm", { type: recordType, domain: `${subdomain}.${domain}` })
     );
     if (!confirmed) return;
 
@@ -284,7 +285,7 @@ export function initializeDashboardPage() {
         body: { domain },
       });
 
-      const successMessage = `${recordType} record for ${subdomain}.${domain} deleted successfully.`;
+      const successMessage = t("dashboard.delete_success", { type: recordType, domain: `${subdomain}.${domain}` });
       showMessage(successMessage, "success");
       await fetchSubdomains();
       refreshDomainCount();

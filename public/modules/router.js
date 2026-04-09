@@ -2,6 +2,7 @@ import { initializeLandingPage } from './home.js';
 import { initializeLoginPage, initializeSignupPage } from './auth.js';
 import { initializeDashboardPage } from './dashboard.js';
 import { renderNavbar, renderFooter, resetMessage } from './ui.js';
+import { applyTranslations, loadLang, getLang } from './i18n.js';
 
 function initializeGuidePage() {
   resetMessage();
@@ -52,5 +53,16 @@ export async function router() {
   // Render common components and initialize page-specific JS
   renderNavbar(path);
   renderFooter();
+  applyTranslations();
   route.init();
+
+  // Wire up language selector
+  const langSelect = document.getElementById("lang-select");
+  if (langSelect) {
+    langSelect.value = getLang();
+    langSelect.addEventListener("change", async () => {
+      await loadLang(langSelect.value);
+      router();
+    });
+  }
 }

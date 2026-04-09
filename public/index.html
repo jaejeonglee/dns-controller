@@ -23,8 +23,41 @@
       name="keywords"
       content="sitey.one, domain, dns management, free domain, domain checker"
     />
-    <meta name="author" content="Subdomain Service" />
-    <meta name="theme-color" content="#1d2d6b" />
+    <meta name="author" content="Sitey" />
+    <meta name="theme-color" content="#1c2d4a" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Sitey - Free Domain for Developers" />
+    <meta property="og:description" content="Get a free subdomain in seconds. Create DNS records and manage them from a simple dashboard." />
+    <meta property="og:url" content="https://www.sitey.one/" />
+    <meta property="og:image" content="https://www.sitey.one/sitey_logo.png" />
+    <meta property="og:site_name" content="Sitey" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Sitey - Free Domain for Developers" />
+    <meta name="twitter:description" content="Get a free subdomain in seconds. Create DNS records and manage them from a simple dashboard." />
+    <meta name="twitter:image" content="https://www.sitey.one/sitey_logo.png" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Sitey",
+      "url": "https://www.sitey.one",
+      "description": "Free subdomain service for developers. Create DNS records and manage domains from a simple dashboard.",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      }
+    }
+    </script>
+
     <link rel="stylesheet" href="style.css" />
     <script src="script.js" type="module" defer></script>
   </head>
@@ -55,14 +88,14 @@
         >
           &times;
         </button>
-        <h2 id="create-modal-title">Create domain</h2>
+        <h2 id="create-modal-title" data-i18n="modal.create.title">Create domain</h2>
         <p class="modal-subtitle">
-          You are about to create
+          <span data-i18n="modal.create.subtitle">You are about to create</span>
           <strong id="create-modal-domain"></strong>
         </p>
         <form id="create-modal-form" novalidate>
           <div class="field-label">
-            <label for="create-modal-type" class="form-label">Record type</label>
+            <label for="create-modal-type" class="form-label" data-i18n="modal.create.type_label">Record type</label>
             <button
               type="button"
               class="tooltip-toggle"
@@ -112,7 +145,7 @@
             class="primary-button"
             id="create-modal-submit"
           >
-            Create domain
+            <span data-i18n="modal.create.submit">Create domain</span>
           </button>
         </form>
       </div>
@@ -121,15 +154,16 @@
     <!-- Page Templates -->
     <template id="template-home">
       <section class="hero">
-        <h1>Get your free domain</h1>
+        <h1 data-i18n="hero.title">Get your free domain</h1>
         <p class="subtitle">
-          with <span id="domain-list-span" aria-live="polite">Loading...</span>
+          <span data-i18n="hero.subtitle.prefix">with</span> <span id="domain-list-span" aria-live="polite">Loading...</span>
         </p>
         <form id="subdomain-form" novalidate>
           <div class="search-box">
             <input
               type="text"
               id="subdomain"
+              data-i18n-placeholder="hero.search.placeholder"
               placeholder="Enter your desired domain"
               required
               pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
@@ -137,7 +171,7 @@
               spellcheck="false"
               autocapitalize="none"
             />
-            <button type="submit" id="check-btn">Check</button>
+            <button type="submit" id="check-btn" data-i18n="hero.search.button">Check</button>
           </div>
         </form>
         <div class="results-section">
@@ -152,23 +186,23 @@
           aria-live="polite"
           aria-atomic="true"
         >
-          Active domains: <span id="domain-count-number">--</span>
+          <span data-i18n="hero.badge">Active domains:</span> <span id="domain-count-number">--</span>
         </div>
       </section>
       <section class="features">
-        <h2>What We Deliver</h2>
+        <h2 data-i18n="features.title">What We Deliver</h2>
         <div class="feature-grid">
           <article class="feature-card">
-            <h3>Speed</h3>
-            <p>Claim a custom domain on our nameserver in seconds. No registrar, no waiting.</p>
+            <h3 data-i18n="features.speed.title">Speed</h3>
+            <p data-i18n="features.speed.desc">Claim a custom domain on our nameserver in seconds. No registrar, no waiting.</p>
           </article>
           <article class="feature-card">
-            <h3>Control</h3>
-            <p>Update DNS targets from your dashboard without touching a registrar panel.</p>
+            <h3 data-i18n="features.control.title">Control</h3>
+            <p data-i18n="features.control.desc">Update DNS targets from your dashboard without touching a registrar panel.</p>
           </article>
           <article class="feature-card">
-            <h3>Security</h3>
-            <p>Manage changes securely through your own credentials with validated records.</p>
+            <h3 data-i18n="features.security.title">Security</h3>
+            <p data-i18n="features.security.desc">Manage changes securely through your own credentials with validated records.</p>
           </article>
         </div>
       </section>
@@ -176,74 +210,46 @@
 
     <template id="template-login">
       <div class="form-card">
-        <h1>Log In</h1>
-        <p class="form-subtitle">Welcome back! Manage your domains.</p>
+        <h1 data-i18n="login.title">Log In</h1>
+        <p class="form-subtitle" data-i18n="login.subtitle">Welcome back! Manage your domains.</p>
         <form id="login-form" novalidate>
           <div class="input-group">
-            <label for="auth-email">Email</label>
-            <input
-              type="email"
-              id="auth-email"
-              placeholder="you@example.com"
-              required
-              autocomplete="email"
-            />
+            <label for="auth-email" data-i18n="login.email">Email</label>
+            <input type="email" id="auth-email" data-i18n-placeholder="login.email.placeholder" placeholder="you@example.com" required autocomplete="email" />
           </div>
           <div class="input-group">
-            <label for="auth-password">Password</label>
-            <input
-              type="password"
-              id="auth-password"
-              placeholder="Your password"
-              required
-              autocomplete="current-password"
-            />
+            <label for="auth-password" data-i18n="login.password">Password</label>
+            <input type="password" id="auth-password" data-i18n-placeholder="login.password.placeholder" placeholder="Your password" required autocomplete="current-password" />
           </div>
-          <button type="submit" id="auth-submit-btn" class="primary-button">
-            Log In
-          </button>
-          <a class="link-button" href="/signup">Create an account</a>
+          <button type="submit" id="auth-submit-btn" class="primary-button" data-i18n="login.submit">Log In</button>
+          <a class="link-button" href="/signup" data-i18n="login.signup_link">Create an account</a>
         </form>
       </div>
     </template>
 
     <template id="template-signup">
       <div class="form-card">
-        <h1>Create Account</h1>
-        <p class="form-subtitle">Sign up to start managing your free domains.</p>
+        <h1 data-i18n="signup.title">Create Account</h1>
+        <p class="form-subtitle" data-i18n="signup.subtitle">Sign up to start managing your free domains.</p>
         <form id="signup-form" novalidate>
           <div class="input-group">
-            <label for="auth-email">Email</label>
-            <input
-              type="email"
-              id="auth-email"
-              placeholder="you@example.com"
-              required
-              autocomplete="email"
-            />
+            <label for="auth-email" data-i18n="signup.email">Email</label>
+            <input type="email" id="auth-email" data-i18n-placeholder="signup.email.placeholder" placeholder="you@example.com" required autocomplete="email" />
           </div>
           <div class="input-group">
-            <label for="auth-password">Password</label>
-            <input
-              type="password"
-              id="auth-password"
-              placeholder="Create a password"
-              required
-              autocomplete="new-password"
-            />
+            <label for="auth-password" data-i18n="signup.password">Password</label>
+            <input type="password" id="auth-password" data-i18n-placeholder="signup.password.placeholder" placeholder="Create a password" required autocomplete="new-password" />
           </div>
-          <button type="submit" id="auth-submit-btn" class="primary-button">
-            Create account
-          </button>
-          <a class="link-button" href="/login">Log in instead</a>
+          <button type="submit" id="auth-submit-btn" class="primary-button" data-i18n="signup.submit">Create account</button>
+          <a class="link-button" href="/login" data-i18n="signup.login_link">Log in instead</a>
         </form>
       </div>
     </template>
 
     <template id="template-dashboard">
       <div class="dashboard-section">
-        <h1>My Domains</h1>
-        <p class="dashboard-subtitle">Manage your active domains below.</p>
+        <h1 data-i18n="dashboard.title">My Domains</h1>
+        <p class="dashboard-subtitle" data-i18n="dashboard.subtitle">Manage your active domains below.</p>
         <div id="dashboard-list" class="dashboard-list-container">
           <p>Loading your domains...</p>
         </div>
@@ -252,73 +258,41 @@
 
     <template id="template-guide">
       <div class="content-page">
-        <h1>Guide</h1>
-        <p class="page-subtitle">Follow these steps to claim and manage your domain.</p>
+        <h1 data-i18n="guide.title">Guide</h1>
+        <p class="page-subtitle" data-i18n="guide.subtitle">Follow these steps to claim and manage your domain.</p>
         <div class="content-section">
           <div class="step-cards">
             <article>
-              <h3>1. Check availability</h3>
-              <p>
-                Enter your preferred domain on the homepage. We validate the
-                format and check every managed domain to confirm whether the name
-                is available.
-              </p>
+              <h3 data-i18n="guide.step1.title">1. Check availability</h3>
+              <p data-i18n="guide.step1.desc">Enter your preferred domain on the homepage.</p>
             </article>
             <article>
-              <h3>2. Create your record</h3>
-              <p>
-                Create an account, log in, and add the IPv4 address you want to
-                point to. Records are written directly to our nameserver and
-                loaded few minutes later.
-              </p>
+              <h3 data-i18n="guide.step2.title">2. Create your record</h3>
+              <p data-i18n="guide.step2.desc">Create an account, log in, and add the IPv4 address.</p>
             </article>
             <article>
-              <h3>3. Manage changes</h3>
-              <p>
-                Visit the dashboard whenever you need to update or delete a
-                domain. Every change keeps your zone files in sync automatically.
-              </p>
+              <h3 data-i18n="guide.step3.title">3. Manage changes</h3>
+              <p data-i18n="guide.step3.desc">Visit the dashboard to update or delete a domain.</p>
             </article>
           </div>
-          <p class="tip">
-            Most DNS changes become visible worldwide within 5 minutes. If you
-            need advanced settings, reach out through the Help page.
-          </p>
+          <p class="tip" data-i18n="guide.tip">Most DNS changes become visible worldwide within 5 minutes.</p>
         </div>
       </div>
     </template>
 
     <template id="template-help">
       <div class="content-page">
-        <h1>Help & Support</h1>
-        <p class="page-subtitle">We're here to help with setup, troubleshooting, and feature requests.</p>
+        <h1 data-i18n="help.title">Help & Support</h1>
+        <p class="page-subtitle" data-i18n="help.subtitle">We're here to help with setup, troubleshooting, and feature requests.</p>
         <div class="content-section">
-          <h2>Contact</h2>
-          <p>
-            Need assistance or want to report abuse? Message the team on
-            <a
-              href="https://t.me/+yvrIFDbssJ0wNDJl"
-              target="_blank"
-              rel="noopener noreferrer"
-              >Telegram</a
-            >
-            and include the domain you're working with.
-          </p>
+          <h2 data-i18n="help.contact.title">Contact</h2>
+          <p data-i18n="help.contact.desc" data-i18n-html>Need assistance? Message the team on <a href="https://t.me/+yvrIFDbssJ0wNDJl" target="_blank" rel="noopener noreferrer">Telegram</a>.</p>
 
           <div class="support-cta">
-            <h3>Support the project</h3>
-            <p>
-              Every domain is free. If this service helps you ship faster,
-              consider buying the developer a warm cup of coffee.
-            </p>
+            <h3 data-i18n="help.support.title">Support the project</h3>
+            <p data-i18n="help.support.desc">Every domain is free. Consider buying the developer a coffee.</p>
             <div class="support-actions">
-              <a
-                class="donate-button"
-                href="https://www.buymeacoffee.com/helpmeup"
-                target="_blank"
-                rel="noopener noreferrer"
-                >Buy me a coffee</a
-              >
+              <a class="donate-button" href="https://www.buymeacoffee.com/helpmeup" target="_blank" rel="noopener noreferrer" data-i18n="help.support.button">Buy me a coffee</a>
             </div>
           </div>
         </div>

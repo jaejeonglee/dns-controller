@@ -3,6 +3,7 @@ import { navigateTo } from "./router.js";
 import { showMessage, setButtonLoading, clearButtonLoading, showLoader, hideLoader, setHidden, clearChildren, resetMessage, formatDomainList } from "./ui.js";
 import { normalizeRecordType, validateRecordValue } from "./util.js";
 import { SUBDOMAIN_REGEX, RECORD_TYPE_UI } from "./constants.js";
+import { t } from "./i18n.js";
 
 async function loadManagedDomains() {
   const target = document.getElementById("domain-list-span");
@@ -308,15 +309,12 @@ export function initializeLandingPage() {
     const inputValue = subdomainInput.value.trim().toLowerCase();
 
     if (!inputValue) {
-      showMessage("Enter a domain to check.", "error");
+      showMessage(t("validation.enter_domain"), "error");
       return;
     }
 
     if (!SUBDOMAIN_REGEX.test(inputValue)) {
-      showMessage(
-        "Domain names can contain lowercase letters, numbers, and single hyphens only.",
-        "error"
-      );
+      showMessage(t("validation.invalid_format"), "error");
       return;
     }
 
@@ -334,7 +332,7 @@ export function initializeLandingPage() {
       const results = Array.isArray(data?.results) ? data.results : [];
 
       if (!results.length) {
-        showMessage("No availability data returned.", "info");
+        showMessage(t("validation.no_data"), "info");
         return;
       }
 
@@ -373,15 +371,15 @@ function createAvailabilityRow(result) {
 
     if (result.isAvailable === true) {
         status.classList.add('available');
-        status.textContent = 'Available';
-        button.textContent = 'Create';
+        status.textContent = t('availability.available');
+        button.textContent = t('availability.create');
         button.dataset.action = 'open-create';
         button.dataset.subdomain = result.subdomain;
         button.dataset.domain = result.domain;
     } else {
         status.classList.add('taken');
-        status.textContent = 'Taken';
-        button.textContent = 'Unavailable';
+        status.textContent = t('availability.taken');
+        button.textContent = t('availability.unavailable');
         button.disabled = true;
     }
 
