@@ -17,6 +17,7 @@ const apiRoutes = require("./routes/index");
 // --- 1. Register plugins ---
 fastify.register(require("./plugins/db"));
 fastify.register(require("./plugins/auth"));
+fastify.register(require("./plugins/validation-scheduler"));
 fastify.register(require("@fastify/static"), {
   root: path.join(__dirname, "public"),
   prefix: "/",

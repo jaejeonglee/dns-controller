@@ -110,6 +110,40 @@ async function sendVerificationEmail(to, token) {
   });
 }
 
+async function sendValidationWarningEmail(to, subdomainInfo) {
+  const gmail = getGmailClient();
+  const { user } = ensureGmailConfig();
+  const from = ensureFromAddress(user);
+
+  const { subdomain, domain, recordType, recordValue } = subdomainInfo;
+  const fullDomain = `${subdomain}.${domain}`;
+
+  const subject = `[Sitey] Your subdomain ${fullDomain} has been removed`;
+  const html = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1d2330;">
+      <h2 style="color: #1c2d4a;">DNS Record Removed</h2>
+      <p>Your subdomain <strong>${fullDomain}</strong> has been removed because the target is no longer reachable.</p>
+      <table style="border-collapse: collapse; margin: 16px 0;">
+        <tr><td style="padding: 4px 12px; font-weight: bold;">Subdomain</td><td style="padding: 4px 12px;">${fullDomain}</td></tr>
+        <tr><td style="padding: 4px 12px; font-weight: bold;">Record Type</td><td style="padding: 4px 12px;">${recordType}</td></tr>
+        <tr><td style="padding: 4px 12px; font-weight: bold;">Target</td><td style="padding: 4px 12px;">${recordValue}</td></tr>
+      </table>
+      <p>The target failed validation checks on two consecutive days. If you believe this was an error, you can re-register the subdomain.</p>
+      <p style="margin-top: 24px; font-size: 0.9rem; color: #4b5563;">
+        This is an automated message from Sitey DNS Controller.
+      </p>
+    </div>
+  `;
+
+  const raw = buildRawMessage({ from, to, subject, html });
+
+  await gmail.users.messages.send({
+    userId: "me",
+    requestBody: { raw },
+  });
+}
+
 module.exports = {
   sendVerificationEmail,
+  sendValidationWarningEmail,
 };

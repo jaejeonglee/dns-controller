@@ -1,5 +1,6 @@
 // routes/domain.js
-const bindService = require("../services/bind"); // ⭐️ Updated import path (../)
+const bindService = require("../services/bind");
+const { validateRecord } = require("../services/validation");
 
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const IPV4_REGEX =
@@ -217,6 +218,18 @@ async function domainRoutes(fastify, options) {
       }
       const recordValue = validation.value;
 
+      // Active validation: check if target is reachable
+      const isReachable = await validateRecord(recordType, recordValue);
+      if (!isReachable) {
+        const msg =
+          recordType === "A"
+            ? `Target IP ${recordValue} is not reachable on port 80 or 443.`
+            : `Target domain ${recordValue} does not resolve to any address.`;
+        return reply
+          .code(400)
+          .send({ error: msg, code: "VALIDATION_UNREACHABLE" });
+      }
+
       const connection = await fastify.mysql.getConnection();
       try {
         // Check for duplicates
@@ -325,6 +338,18 @@ async function domainRoutes(fastify, options) {
           return reply.code(400).send({ error: validation.message });
         }
         const recordValue = validation.value;
+
+        // Active validation: check if target is reachable
+        const isReachable = await validateRecord(recordType, recordValue);
+        if (!isReachable) {
+          const msg =
+            recordType === "A"
+              ? `Target IP ${recordValue} is not reachable on port 80 or 443.`
+              : `Target domain ${recordValue} does not resolve to any address.`;
+          return reply
+            .code(400)
+            .send({ error: msg, code: "VALIDATION_UNREACHABLE" });
+        }
 
         // DB first (in transaction), then BIND9
         await connection.beginTransaction();

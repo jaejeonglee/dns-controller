@@ -8,6 +8,16 @@ if (!devMode && !process.env.BIND_DB_PATH) {
   required.push("BIND_DB_PATH");
 }
 
+function parseIntEnv(envKey, defaultVal) {
+  const raw = process.env[envKey];
+  if (raw === undefined || raw === "") return defaultVal;
+  const parsed = parseInt(raw, 10);
+  if (Number.isNaN(parsed)) {
+    throw new Error(`Invalid integer value for ${envKey}: ${raw}`);
+  }
+  return parsed;
+}
+
 const missing = required.filter((key) => !process.env[key]);
 if (missing.length > 0) {
   throw new Error(
@@ -39,6 +49,16 @@ module.exports = {
       refreshToken: process.env.GMAIL_REFRESH_TOKEN,
       user: process.env.GMAIL_SENDER || process.env.GMAIL_USER || process.env.SMTP_USER,
     },
+  },
+  validation: {
+    enabled:
+      String(process.env.VALIDATION_ENABLED || "true")
+        .trim()
+        .toLowerCase() === "true",
+    intervalMs: parseIntEnv("VALIDATION_INTERVAL_MS", 24 * 60 * 60 * 1000),
+    tcpTimeoutMs: parseIntEnv("VALIDATION_TCP_TIMEOUT_MS", 3000),
+    concurrency: parseIntEnv("VALIDATION_CONCURRENCY", 5),
+    batchSize: parseIntEnv("VALIDATION_BATCH_SIZE", 50),
   },
   server: {
     port: process.env.PORT || 3000,
