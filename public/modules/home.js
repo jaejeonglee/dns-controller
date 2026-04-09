@@ -20,7 +20,7 @@ async function loadManagedDomains() {
   }
 }
 
-async function refreshDomainCount() {
+export async function refreshDomainCount() {
   const counter = document.getElementById("domain-count-number");
   if (!counter) return;
 

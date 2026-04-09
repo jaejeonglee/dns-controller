@@ -3,6 +3,7 @@ import { navigateTo } from "./router.js";
 import { showMessage, setButtonLoading, clearButtonLoading, showLoader, hideLoader, resetMessage } from "./ui.js";
 import { normalizeRecordType, validateRecordValue } from "./util.js";
 import { RECORD_TYPE_UI } from "./constants.js";
+import { refreshDomainCount } from "./home.js";
 
 export function initializeDashboardPage() {
   resetMessage();
