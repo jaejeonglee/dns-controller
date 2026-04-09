@@ -47,7 +47,6 @@ export function initializeLandingPage() {
   if (!form || !subdomainInput || !checkBtn || !resultsContainer) return;
 
   subdomainInput.addEventListener("input", () => {
-    resetMessage();
     clearChildren(resultsContainer);
     setHidden(resultsContainer, true);
   });

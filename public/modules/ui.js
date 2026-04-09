@@ -1,31 +1,35 @@
 import { getAuthToken, logoutAndRedirect } from "./api.js";
 import { toggleTheme } from "./theme.js";
 
-export function showMessage(message, type = "info") {
-  const messageBox = document.getElementById("form-message");
-  if (!messageBox) return;
+/* ============================================
+   Toast Notifications
+   ============================================ */
+const TOAST_DURATION = 4000;
 
-  messageBox.textContent = message;
-  messageBox.className = "message-box show";
-  messageBox.classList.add(type);
+export function showMessage(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateX(20px)";
+    toast.style.transition = "opacity 0.3s, transform 0.3s";
+    setTimeout(() => toast.remove(), 300);
+  }, TOAST_DURATION);
 }
 
 export function resetMessage() {
-  const messageBox = document.getElementById("form-message");
-  if (!messageBox) return;
-
-  const defaultMessage =
-    messageBox.dataset.defaultMessage || messageBox.textContent || "";
-
-  messageBox.className = "message-box";
-  if (defaultMessage) {
-    messageBox.textContent = defaultMessage;
-    messageBox.classList.add("show", "info");
-  } else {
-    messageBox.textContent = "";
-  }
+  // No-op: toasts auto-dismiss, no persistent message to reset
 }
 
+/* ============================================
+   Button Loading States
+   ============================================ */
 export function setButtonLoading(button, label) {
   if (!button) return;
   if (!button.dataset.originalText) {
@@ -45,6 +49,9 @@ export function clearButtonLoading(button) {
   button.disabled = false;
 }
 
+/* ============================================
+   Visibility & DOM Helpers
+   ============================================ */
 export function setHidden(element, shouldHide) {
   if (!element) return;
   element.classList.toggle("hidden", Boolean(shouldHide));
@@ -57,6 +64,9 @@ export function clearChildren(element) {
   }
 }
 
+/* ============================================
+   Loader
+   ============================================ */
 let loaderElement = null;
 let loaderCount = 0;
 
@@ -78,7 +88,6 @@ function ensureLoader() {
     loaderElement.append(spinner, srText);
     document.body.appendChild(loaderElement);
   }
-
   return loaderElement;
 }
 
@@ -89,18 +98,22 @@ export function showLoader() {
 }
 
 export function hideLoader() {
-  if (loaderCount > 0) {
-    loaderCount -= 1;
-  }
+  if (loaderCount > 0) loaderCount -= 1;
   if (loaderCount === 0 && loaderElement) {
     loaderElement.classList.remove("show");
   }
 }
 
+/* ============================================
+   Format Helpers
+   ============================================ */
 export function formatDomainList(domains = []) {
   return domains.join(", ");
 }
 
+/* ============================================
+   Footer
+   ============================================ */
 export function renderFooter() {
   const container = document.getElementById("footer");
   if (!container) return;
@@ -115,66 +128,91 @@ export function renderFooter() {
   `;
 }
 
+/* ============================================
+   Navbar
+   ============================================ */
 export function renderNavbar(currentPath) {
-    const container = document.getElementById("navbar");
-    if (!container) return;
+  const container = document.getElementById("navbar");
+  if (!container) return;
 
-    const token = getAuthToken();
+  const token = getAuthToken();
 
-    const navLinks = [
-        { path: "/", label: "Home" },
-        { path: "/guide", label: "Guide" },
-        { path: "/help", label: "Help" },
-    ];
+  const navLinks = [
+    { path: "/", label: "Home" },
+    { path: "/guide", label: "Guide" },
+    { path: "/help", label: "Help" },
+  ];
 
-    if (token) {
-        navLinks.push({ path: "/dashboard", label: "My domains" });
-    }
+  if (token) {
+    navLinks.push({ path: "/dashboard", label: "My domains" });
+  }
 
-    const authLink = token
-        ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">Log out</button>`
-        : `<a href="/login" class="nav-auth-btn ${currentPath === '/login' ? 'active' : ''}">Log in</a>`;
+  const authLink = token
+    ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">Log out</button>`
+    : `<a href="/login" class="nav-auth-btn ${currentPath === "/login" ? "active" : ""}">Log in</a>`;
 
-    let html = `
-        <nav class="site-nav" aria-label="Primary">
-            <div class="nav-left">
-                <a href="/" class="nav-logo" aria-label="Sitey Home">
-                    <img src="sitey_logo.png" alt="sitey.one logo" width="28" height="28" decoding="async" fetchpriority="high" />
-                    <span class="nav-brand">SITEY</span>
-                </a>
-            </div>
-            <div class="nav-center">
-                ${navLinks.map(({ path, label }) => `
-                    <a href="${path}" class="${currentPath === path ? 'active' : ''}">${label}</a>
-                `).join("")}
-            </div>
-            <div class="nav-right">
-                <select id="lang-select" class="nav-select">
-                    <option value="en">English</option>
-                    <option value="ko">한국어</option>
-                </select>
-                <button type="button" id="theme-toggle-btn" class="nav-auth-btn" aria-label="Toggle theme">
-                    <span class="sr-only">Toggle theme</span>
-                    <span id="theme-icon-sun" class="theme-icon" style="display: none;">🌝</span>
-                    <span id="theme-icon-moon" class="theme-icon" style="display: none;">🌚</span>
-                </button>
-                ${authLink}
-            </div>
-        </nav>
-    `;
+  container.innerHTML = `
+    <nav class="site-nav" aria-label="Primary">
+      <div class="nav-left">
+        <a href="/" class="nav-logo" aria-label="Sitey Home">
+          <img src="sitey_logo.png" alt="sitey.one logo" width="28" height="28" decoding="async" fetchpriority="high" />
+          <span class="nav-brand">SITEY</span>
+        </a>
+      </div>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+      <div class="nav-center" id="nav-menu">
+        ${navLinks.map(({ path, label }) => `
+          <a href="${path}" class="${currentPath === path ? "active" : ""}">${label}</a>
+        `).join("")}
+      </div>
+      <div class="nav-right">
+        <select id="lang-select" class="nav-select">
+          <option value="en">EN</option>
+          <option value="ko">KR</option>
+        </select>
+        <button type="button" id="theme-toggle-btn" class="nav-auth-btn" aria-label="Toggle theme">
+          <span id="theme-icon-sun" class="theme-icon" style="display: none;">&#x1F31D;</span>
+          <span id="theme-icon-moon" class="theme-icon" style="display: none;">&#x1F31A;</span>
+        </button>
+        ${authLink}
+      </div>
+    </nav>
+  `;
 
-    container.innerHTML = html;
+  // Logout
+  const logoutBtn = container.querySelector("#nav-logout-btn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      logoutAndRedirect("/");
+    });
+  }
 
-    const logoutBtn = container.querySelector("#nav-logout-btn");
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", (event) => {
-            event.preventDefault();
-            logoutAndRedirect("/");
-        });
-    }
+  // Theme toggle
+  const themeToggleBtn = container.querySelector("#theme-toggle-btn");
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener("click", toggleTheme);
+  }
 
-    const themeToggleBtn = container.querySelector("#theme-toggle-btn");
-    if (themeToggleBtn) {
-        themeToggleBtn.addEventListener("click", toggleTheme);
-    }
+  // Mobile menu toggle
+  const navToggle = container.querySelector("#nav-toggle");
+  const navMenu = container.querySelector("#nav-menu");
+  if (navToggle && navMenu) {
+    navToggle.addEventListener("click", () => {
+      const isOpen = navMenu.classList.toggle("open");
+      navToggle.classList.toggle("open", isOpen);
+      navToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    // Close menu on link click
+    navMenu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => {
+        navMenu.classList.remove("open");
+        navToggle.classList.remove("open");
+        navToggle.setAttribute("aria-expanded", "false");
+      });
+    });
+  }
 }

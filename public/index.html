@@ -35,7 +35,9 @@
       <div id="footer"></div>
     </div>
 
-    <!-- Modal is a global component, so it lives outside the templates -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Create Modal -->
     <div
       id="create-modal"
       class="modal hidden"
@@ -51,7 +53,7 @@
           id="create-modal-close"
           aria-label="Close create modal"
         >
-          ×
+          &times;
         </button>
         <h2 id="create-modal-title">Create domain</h2>
         <p class="modal-subtitle">
@@ -60,9 +62,7 @@
         </p>
         <form id="create-modal-form" novalidate>
           <div class="field-label">
-            <label for="create-modal-type" class="form-label"
-              >Record type</label
-            >
+            <label for="create-modal-type" class="form-label">Record type</label>
             <button
               type="button"
               class="tooltip-toggle"
@@ -120,117 +120,81 @@
 
     <!-- Page Templates -->
     <template id="template-home">
-      <div class="top-indicators">
-        <div
-          id="domain-count"
-          class="domain-indicator"
-          aria-live="polite"
-          aria-atomic="true"
-        >
-          Active domains: <span id="domain-count-number">--</span>
-        </div>
-      </div>
-      <header>
-        <h1>Get your domain</h1>
-        <p class="managed-domains-list">
-          with
-          <span id="domain-list-span" aria-live="polite">Loading…</span>
+      <section class="hero">
+        <h1>Get your free domain</h1>
+        <p class="subtitle">
+          with <span id="domain-list-span" aria-live="polite">Loading...</span>
         </p>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="Check availability and manage your domains."
-        >
-          Check availability and manage your domains.
-        </div>
-      </header>
-      <div class="flow">
         <form id="subdomain-form" novalidate>
-          <div class="input-group with-button">
+          <div class="search-box">
             <input
               type="text"
               id="subdomain"
-              placeholder="your desired domain"
+              placeholder="Enter your desired domain"
               required
               pattern="^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$"
               autocomplete="off"
               spellcheck="false"
               autocapitalize="none"
-              title="Domain names can contain lowercase letters, numbers, and hyphens."
             />
-            <button
-              type="submit"
-              id="check-btn"
-              class="primary-button small inline-button"
-            >
-              Check
-            </button>
+            <button type="submit" id="check-btn">Check</button>
           </div>
         </form>
+        <div class="results-section">
+          <div
+            id="availability-results"
+            class="hidden"
+            aria-live="polite"
+          ></div>
+        </div>
         <div
-          id="availability-results"
-          class="stack hidden"
+          class="domain-badge"
           aria-live="polite"
-        ></div>
-      </div>
-      <section id="intro" class="content-section">
+          aria-atomic="true"
+        >
+          Active domains: <span id="domain-count-number">--</span>
+        </div>
+      </section>
+      <section class="features">
         <h2>What We Deliver</h2>
-        <p>
-          This service helps developers, makers, and communities launch projects
-          on the web in minutes.
-        </p>
-        <ul class="feature-list">
-          <li>
-            <strong>Speed:</strong> Claim a custom domain on our nameserver in
-            seconds.
-          </li>
-          <li>
-            <strong>Control:</strong> Update DNS targets without touching a
-            registrar dashboard.
-          </li>
-          <li>
-            <strong>Security:</strong> Manage changes securely through your own
-            credentials.
-          </li>
-          <li>
-            <strong>Reliability:</strong> Built on self-hosted infrastructure
-            with daily backups.
-          </li>
-        </ul>
+        <div class="feature-grid">
+          <article class="feature-card">
+            <h3>Speed</h3>
+            <p>Claim a custom domain on our nameserver in seconds. No registrar, no waiting.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Control</h3>
+            <p>Update DNS targets from your dashboard without touching a registrar panel.</p>
+          </article>
+          <article class="feature-card">
+            <h3>Security</h3>
+            <p>Manage changes securely through your own credentials with validated records.</p>
+          </article>
+        </div>
       </section>
     </template>
 
     <template id="template-login">
-      <header>
-        <h1 id="main-headline">Log In</h1>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="Welcome back! Manage your domains."
-        >
-          Welcome back! Manage your domains.
-        </div>
-      </header>
-      <section class="form-section">
+      <div class="form-card">
+        <h1>Log In</h1>
+        <p class="form-subtitle">Welcome back! Manage your domains.</p>
         <form id="login-form" novalidate>
           <div class="input-group">
+            <label for="auth-email">Email</label>
             <input
               type="email"
               id="auth-email"
-              placeholder="Email address"
+              placeholder="you@example.com"
               required
               autocomplete="email"
             />
           </div>
           <div class="input-group">
+            <label for="auth-password">Password</label>
             <input
               type="password"
               id="auth-password"
-              placeholder="Password"
+              placeholder="Your password"
               required
               autocomplete="current-password"
             />
@@ -240,34 +204,26 @@
           </button>
           <a class="link-button" href="/signup">Create an account</a>
         </form>
-      </section>
+      </div>
     </template>
 
     <template id="template-signup">
-      <header>
-        <h1 id="main-headline">Create Your Account</h1>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="Sign up to start managing your free domains."
-        >
-          Sign up to start managing your free domains.
-        </div>
-      </header>
-      <section class="form-section">
+      <div class="form-card">
+        <h1>Create Account</h1>
+        <p class="form-subtitle">Sign up to start managing your free domains.</p>
         <form id="signup-form" novalidate>
           <div class="input-group">
+            <label for="auth-email">Email</label>
             <input
               type="email"
               id="auth-email"
-              placeholder="Email address"
+              placeholder="you@example.com"
               required
               autocomplete="email"
             />
           </div>
           <div class="input-group">
+            <label for="auth-password">Password</label>
             <input
               type="password"
               id="auth-password"
@@ -281,116 +237,89 @@
           </button>
           <a class="link-button" href="/login">Log in instead</a>
         </form>
-      </section>
+      </div>
     </template>
 
     <template id="template-dashboard">
-      <header>
-        <h1 id="main-headline">My Dashboard</h1>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="Manage your active domains below."
-        >
-          Manage your active domains below.
-        </div>
-      </header>
-      <section id="dashboard-section" class="content-section stack">
-        <h2>My Domains</h2>
+      <div class="dashboard-section">
+        <h1>My Domains</h1>
+        <p class="dashboard-subtitle">Manage your active domains below.</p>
         <div id="dashboard-list" class="dashboard-list-container">
           <p>Loading your domains...</p>
         </div>
-      </section>
+      </div>
     </template>
 
     <template id="template-guide">
-      <header>
+      <div class="content-page">
         <h1>Guide</h1>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="Follow these steps to claim and manage your domain."
-        >
-          Follow these steps to claim and manage your domain.
+        <p class="page-subtitle">Follow these steps to claim and manage your domain.</p>
+        <div class="content-section">
+          <div class="step-cards">
+            <article>
+              <h3>1. Check availability</h3>
+              <p>
+                Enter your preferred domain on the homepage. We validate the
+                format and check every managed domain to confirm whether the name
+                is available.
+              </p>
+            </article>
+            <article>
+              <h3>2. Create your record</h3>
+              <p>
+                Create an account, log in, and add the IPv4 address you want to
+                point to. Records are written directly to our nameserver and
+                loaded few minutes later.
+              </p>
+            </article>
+            <article>
+              <h3>3. Manage changes</h3>
+              <p>
+                Visit the dashboard whenever you need to update or delete a
+                domain. Every change keeps your zone files in sync automatically.
+              </p>
+            </article>
+          </div>
+          <p class="tip">
+            Most DNS changes become visible worldwide within 5 minutes. If you
+            need advanced settings, reach out through the Help page.
+          </p>
         </div>
-      </header>
-      <div class="content-section">
-        <div class="step-cards">
-          <article>
-            <h3>1. Check availability</h3>
-            <p>
-              Enter your preferred domain on the homepage. We validate the
-              format and check every managed domain to confirm whether the name
-              is available.
-            </p>
-          </article>
-          <article>
-            <h3>2. Create your record</h3>
-            <p>
-              Create an account, log in, and add the IPv4 address you want to
-              point to. Records are written directly to our nameserver and
-              loaded few minutes later.
-            </p>
-          </article>
-          <article>
-            <h3>3. Manage changes</h3>
-            <p>
-              Visit the dashboard whenever you need to update or delete a
-              domain. Every change keeps your zone files in sync automatically.
-            </p>
-          </article>
-        </div>
-        <p class="tip">
-          Most DNS changes become visible worldwide within 5 minutes. If you
-          need advanced settings, reach out through the Help page.
-        </p>
       </div>
     </template>
 
     <template id="template-help">
-      <header>
+      <div class="content-page">
         <h1>Help & Support</h1>
-        <div
-          id="form-message"
-          class="message-box show info"
-          role="status"
-          aria-live="polite"
-          data-default-message="We're here to help with setup, troubleshooting, and feature requests."
-        >
-          We're here to help with setup, troubleshooting, and feature requests.
-        </div>
-      </header>
-      <div class="content-section">
-        <h2>Contact</h2>
-        <p>
-          Need assistance or want to report abuse? Message the team on
-          <a
-            href="https://t.me/+yvrIFDbssJ0wNDJl"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Telegram</a
-          >
-          and include the domain you're working with.
-        </p>
-
-        <div class="support-cta">
-          <h3>Support the project</h3>
+        <p class="page-subtitle">We're here to help with setup, troubleshooting, and feature requests.</p>
+        <div class="content-section">
+          <h2>Contact</h2>
           <p>
-            Every domain is free. If this service helps you ship faster,
-            consider buying the developer a warm cup of coffee.
-          </p>
-          <div class="support-actions">
+            Need assistance or want to report abuse? Message the team on
             <a
-              class="donate-button"
-              href="https://www.buymeacoffee.com/helpmeup"
+              href="https://t.me/+yvrIFDbssJ0wNDJl"
               target="_blank"
               rel="noopener noreferrer"
-              >❤️ ☕️</a
+              >Telegram</a
             >
+            and include the domain you're working with.
+          </p>
+
+          <div class="support-cta">
+            <h3>Support the project</h3>
+            <p>
+              Every domain is free. If this service helps you ship faster,
+              consider buying the developer a warm cup of coffee.
+            </p>
+            <div class="support-actions">
+              <a
+                class="donate-button"
+                href="https://www.buymeacoffee.com/helpmeup"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Buy me a coffee</a
+              >
+            </div>
           </div>
         </div>
       </div>
