@@ -1,12 +1,12 @@
 {
-  "nav.home": "홈",
+  "nav.home": "등록",
   "nav.docs": "문서",
   "nav.help": "지원",
-  "nav.dashboard": "내 도메인",
+  "nav.dashboard": "내 도메인 관리",
   "nav.login": "로그인",
   "nav.logout": "로그아웃",
 
-  "hero.title": "나만의 도메인, 바로 시작하세요",
+  "hero.title": "나만의 도메인을 무료로 등록하세요",
   "hero.subtitle.prefix": "",
   "hero.search.placeholder": "원하는 도메인을 입력해보세요",
   "hero.search.button": "검색",
@@ -14,11 +14,11 @@
 
   "features.title": "왜 Sitey인가요?",
   "features.speed.title": "몇 초면 끝",
-  "features.speed.desc": "복잡한 절차 없이 원하는 도메인을 바로 등록하세요.",
+  "features.speed.desc": "복잡한 절차 없이 원하는 도메인을 바로 등록할 수 있어요.",
   "features.control.title": "내 손 안의 관리",
   "features.control.desc": "대시보드 하나로 DNS 설정을 자유롭게 바꿀 수 있어요.",
   "features.security.title": "걱정 없는 보안",
-  "features.security.desc": "레코드 유효성 검증과 안전한 인증으로 안심하고 사용하세요.",
+  "features.security.desc": "자체 인프라에 대한 보안과 모니터링 중 입니다. 안심하고 사용하세요.",
 
   "login.title": "로그인",
   "login.subtitle": "돌아오셨네요!",
@@ -41,7 +41,7 @@
   "dashboard.title": "내 도메인",
   "dashboard.subtitle": "등록한 도메인을 한눈에 관리하세요.",
   "dashboard.loading": "불러오는 중...",
-  "dashboard.empty": "아직 등록한 도메인이 없어요. 홈에서 만들어보세요!",
+  "dashboard.empty": "아직 등록한 도메인이 없어요. 도메인을 먼저 만들어보세요!",
   "dashboard.save": "저장",
   "dashboard.delete": "삭제",
   "dashboard.delete_confirm": "{domain}의 {type} 레코드를 삭제할까요? 이 작업은 되돌릴 수 없어요.",
