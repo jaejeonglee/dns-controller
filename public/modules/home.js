@@ -47,6 +47,14 @@ export function initializeLandingPage() {
 
   if (!form || !subdomainInput || !checkBtn || !resultsContainer) return;
 
+  // Pre-fill from ?check= query param (e.g. from blog domain chip click)
+  const params = new URLSearchParams(window.location.search);
+  const prefill = params.get("check");
+  if (prefill && SUBDOMAIN_REGEX.test(prefill)) {
+    subdomainInput.value = prefill;
+    setTimeout(() => form.requestSubmit(), 0);
+  }
+
   subdomainInput.addEventListener("input", () => {
     clearChildren(resultsContainer);
     setHidden(resultsContainer, true);

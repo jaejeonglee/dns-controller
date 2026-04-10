@@ -13,7 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       // Skip hash-only links (e.g. docs sidebar)
       if (link.getAttribute("href")?.startsWith("#")) return;
       event.preventDefault();
-      navigateTo(link.pathname);
+      navigateTo(link.pathname + link.search);
     }
   });
 

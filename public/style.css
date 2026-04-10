@@ -945,6 +945,101 @@ body.dark-theme .docs-content pre {
 }
 
 /* ============================================
+   11c. Blog
+   ============================================ */
+.blog-article {
+  max-width: 780px;
+  margin: 48px auto 80px;
+  padding: 0 24px;
+}
+
+.blog-header {
+  margin-bottom: 48px;
+  text-align: center;
+}
+
+.blog-header h1 {
+  font-size: clamp(1.8rem, 4vw, 2.25rem);
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-color);
+  margin-bottom: 12px;
+}
+
+.blog-meta {
+  font-size: 0.95rem;
+  color: var(--muted-color);
+  margin-bottom: 24px;
+}
+
+.blog-intro {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: var(--text-color);
+}
+
+.blog-section {
+  margin-bottom: 48px;
+}
+
+.blog-section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-color);
+}
+
+.blog-section p {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--muted-color);
+  margin-bottom: 16px;
+}
+
+.blog-section ul {
+  margin: 16px 0 0 24px;
+  color: var(--muted-color);
+  line-height: 1.8;
+}
+
+.blog-section li strong {
+  color: var(--text-color);
+}
+
+.domain-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.domain-chip {
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--container-bg);
+  color: var(--text-color);
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.domain-chip:hover {
+  border-color: var(--accent-color);
+  background: rgba(77, 165, 179, 0.08);
+  color: var(--accent-color);
+  transform: translateY(-1px);
+}
+
+.blog-cta-btn {
+  max-width: 240px;
+  margin: 24px auto 0;
+  display: block;
+}
+
+/* ============================================
    11b. Content Sections (Help)
    ============================================ */
 .content-page {

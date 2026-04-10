@@ -2,6 +2,7 @@ import { initializeLandingPage } from './home.js';
 import { initializeLoginPage } from './auth.js';
 import { initializeDashboardPage } from './dashboard.js';
 import { initializeDocsPage } from './docs.js';
+import { initializeBlogPage } from './blog.js';
 import { renderNavbar, renderFooter, resetMessage } from './ui.js';
 import { applyTranslations, loadLang, getLang } from './i18n.js';
 import { getCurrentUser } from './api.js';
@@ -18,6 +19,7 @@ const routes = {
     "/dashboard": { templateId: "template-dashboard", init: initializeDashboardPage, title: "Dashboard - Sitey", auth: true },
     "/docs": { templateId: "template-docs", init: initializeDocsPage, title: "Docs - Sitey" },
     "/guide": { templateId: "template-docs", init: initializeDocsPage, title: "Docs - Sitey" },
+    "/blog": { templateId: "template-blog", init: initializeBlogPage, title: "Domain Name Ideas - Sitey" },
     "/help": { templateId: "template-help", init: initializeHelpPage, title: "Help - Sitey" },
 };
 
