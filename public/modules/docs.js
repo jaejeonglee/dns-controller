@@ -99,6 +99,7 @@ export function initializeDocsPage() {
     const link = e.target.closest(".docs-link");
     if (!link) return;
     e.preventDefault();
+    e.stopPropagation();
 
     const docId = link.dataset.doc;
     window.location.hash = docId;

@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.body.addEventListener("click", (event) => {
     const link = event.target.closest("a");
     if (link && link.target !== "_blank" && link.origin === window.location.origin) {
+      // Skip hash-only links (e.g. docs sidebar)
+      if (link.getAttribute("href")?.startsWith("#")) return;
       event.preventDefault();
       navigateTo(link.pathname);
     }
