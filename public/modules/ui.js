@@ -1,5 +1,5 @@
 import { getCurrentUser, logoutAndRedirect } from "./api.js";
-import { toggleTheme } from "./theme.js";
+import { toggleTheme, applyTheme } from "./theme.js";
 import { t } from "./i18n.js";
 
 /* ============================================
@@ -191,10 +191,14 @@ export function renderNavbar(currentPath) {
     });
   }
 
-  // Theme toggle
+  // Theme toggle — re-apply current theme to refresh icon state
   const themeToggleBtn = container.querySelector("#theme-toggle-btn");
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener("click", toggleTheme);
+    const currentTheme = document.body.classList.contains("dark-theme")
+      ? "dark"
+      : "light";
+    applyTheme(currentTheme);
   }
 
   // Mobile menu toggle

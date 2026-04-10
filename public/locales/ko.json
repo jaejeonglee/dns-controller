@@ -6,13 +6,13 @@
   "nav.login": "로그인",
   "nav.logout": "로그아웃",
 
-  "hero.title": "나만의 도메인을 무료로 등록하세요",
+  "hero.title": "나만의 도메인을 무료로 등록하세요!",
   "hero.subtitle.prefix": "",
   "hero.search.placeholder": "원하는 도메인을 입력해보세요",
   "hero.search.button": "검색",
   "hero.badge": "운영 중인 도메인:",
 
-  "features.title": "왜 Sitey인가요?",
+  "features.title": "Sitey를 소개합니다",
   "features.speed.title": "몇 초면 끝",
   "features.speed.desc": "복잡한 절차 없이 원하는 도메인을 바로 등록할 수 있어요.",
   "features.control.title": "내 손 안의 관리",
