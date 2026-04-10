@@ -1,6 +1,7 @@
 // routes/index.js
 const userRoutes = require("./user.js");
 const domainRoutes = require("./domain.js");
+const blogRoutes = require("./blog.js");
 const privacyPolicy = require("../configs/privacyPolicy");
 
 /**
@@ -12,6 +13,9 @@ async function apiRoutes(fastify, options) {
 
   // 2. Register domain-related /api/* routes
   fastify.register(domainRoutes);
+
+  // 2b. Register blog routes
+  fastify.register(blogRoutes);
 
   // 3. Register /api/policies/privacy route
   fastify.get("/policies/privacy", async (request, reply) => {

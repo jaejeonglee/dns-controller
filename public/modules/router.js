@@ -34,7 +34,14 @@ export async function router() {
     path = '/';
   }
 
-  const route = routes[path] || routes["/"];
+  // Match /blog/:slug to the blog route
+  let route = routes[path];
+  if (!route && /^\/blog\/[^/]+$/.test(path)) {
+    route = routes["/blog"];
+  }
+  if (!route) {
+    route = routes["/"];
+  }
 
   // Redirect to login if auth required and not logged in
   if (route.auth && !getCurrentUser()) {

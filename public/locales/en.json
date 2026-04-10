@@ -107,43 +107,8 @@
   "common.loading": "Loading...",
   "common.unavailable": "Unavailable",
 
-  "blog.title": "100+ Domain Name Ideas for Developers in 2026",
-  "blog.meta": "A curated list of short, memorable subdomain names you can claim right now — free.",
-  "blog.intro": "Finding the perfect domain name is half the battle when launching a project. We picked 100+ short, memorable names that work great as subdomains. Click any name to check if it's available — you can grab it in seconds, no registrar needed.",
-
-  "blog.why.title": "Why domain names matter",
-  "blog.why.body": "A good domain name is short, memorable, and hints at what you do. Here are a few rules we follow:",
-  "blog.why.tip1.title": "Keep it short",
-  "blog.why.tip1.desc": "Under 10 characters is ideal. Easy to type, easy to remember, easy to share.",
-  "blog.why.tip2.title": "Easy to spell",
-  "blog.why.tip2.desc": "Avoid numbers, hyphens, or tricky spellings. If you need to clarify it over the phone, it's too hard.",
-  "blog.why.tip3.title": "Memorable",
-  "blog.why.tip3.desc": "Pick a name with personality. Generic words get forgotten quickly.",
-  "blog.why.tip4.title": "Relevant",
-  "blog.why.tip4.desc": "Hint at what your project does. \"blog.sitey.one\" beats \"stuff.sitey.one\".",
-
-  "blog.portfolio.title": "Portfolio & Personal",
-  "blog.portfolio.body": "Building a personal site or online resume? These short names work great for showcasing your work.",
-
-  "blog.blog.title": "Blog & Writing",
-  "blog.blog.body": "For personal blogs, newsletters, or journaling. Clean and straightforward.",
-
-  "blog.startup.title": "Startup & SaaS",
-  "blog.startup.body": "Launching a product or service? These names sound professional and give your project structure.",
-
-  "blog.side.title": "Side Projects & Experiments",
-  "blog.side.body": "Weekend hacks, prototypes, and experiments deserve fun names too.",
-
-  "blog.dev.title": "Developer Tools",
-  "blog.dev.body": "Building something for developers? These technical-sounding names fit right in.",
-
-  "blog.ai.title": "AI & ML Projects",
-  "blog.ai.body": "LLM demos, AI tools, or ML experiments. Ride the wave with these AI-flavored names.",
-
-  "blog.creative.title": "Creative & Abstract",
-  "blog.creative.body": "Looking for something unique and evocative? These abstract names leave room for meaning.",
-
-  "blog.cta.title": "Ready to claim yours?",
-  "blog.cta.body": "Pick a name above or come up with your own. Sitey gives you a free subdomain in seconds, no signup friction, no waiting.",
-  "blog.cta.button": "Get started"
+  "blog.list.title": "Blog",
+  "blog.list.subtitle": "Tips, tutorials, and ideas for developers.",
+  "blog.empty": "No posts yet.",
+  "blog.back": "Back to blog"
 }

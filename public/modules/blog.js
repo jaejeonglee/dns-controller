@@ -1,133 +1,105 @@
-import { t } from "./i18n.js";
+import { apiFetch } from "./api.js";
 import { navigateTo } from "./router.js";
+import { getLang } from "./i18n.js";
+import { t } from "./i18n.js";
 
-const MANAGED_DOMAIN = "sitey.one";
-
-function renderDomainChip(name) {
-  return `<button type="button" class="domain-chip" data-name="${name}">${name}.${MANAGED_DOMAIN}</button>`;
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toISOString().slice(0, 10);
 }
 
-function renderDomainGroup(names) {
-  return `<div class="domain-chip-group">${names.map(renderDomainChip).join("")}</div>`;
+async function renderList() {
+  const container = document.getElementById("blog-content");
+  if (!container) return;
+
+  container.innerHTML = `<p>${t("common.loading")}</p>`;
+
+  try {
+    const data = await apiFetch(`/api/blog?lang=${getLang()}`);
+    const posts = data.posts || [];
+
+    if (posts.length === 0) {
+      container.innerHTML = `<p>${t("blog.empty")}</p>`;
+      return;
+    }
+
+    container.innerHTML = `
+      <header class="blog-list-header">
+        <h1>${t("blog.list.title")}</h1>
+        <p>${t("blog.list.subtitle")}</p>
+      </header>
+      <ul class="blog-list">
+        ${posts.map((post) => `
+          <li class="blog-list-item">
+            <a href="/blog/${encodeURIComponent(post.slug)}" class="blog-list-link">
+              <h2>${escapeHtml(post.title)}</h2>
+              ${post.description ? `<p class="blog-list-desc">${escapeHtml(post.description)}</p>` : ""}
+              ${post.date ? `<time class="blog-list-date">${formatDate(post.date)}</time>` : ""}
+            </a>
+          </li>
+        `).join("")}
+      </ul>
+    `;
+  } catch (error) {
+    container.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  }
 }
 
-const portfolioNames = [
-  "me", "folio", "hi", "myself", "iam", "hello", "portfolio", "work",
-  "showcase", "resume", "cv", "about", "profile", "intro", "studio",
-];
+async function renderPost(slug) {
+  const container = document.getElementById("blog-content");
+  if (!container) return;
 
-const blogNames = [
-  "blog", "journal", "notes", "writes", "thoughts", "diary", "words",
-  "stories", "posts", "log", "musings", "chronicle",
-];
+  container.innerHTML = `<p>${t("common.loading")}</p>`;
 
-const startupNames = [
-  "app", "labs", "lab", "studio", "works", "build", "ship", "make",
-  "try", "beta", "co", "group", "inc", "team", "hq",
-];
+  try {
+    const post = await apiFetch(`/api/blog/${encodeURIComponent(slug)}?lang=${getLang()}`);
 
-const sideProjectNames = [
-  "hack", "play", "test", "experiment", "wip", "draft", "sandbox",
-  "prototype", "demo", "poc", "mvp", "side", "weekend", "hobby",
-];
+    document.title = `${post.title} - Sitey`;
 
-const devNames = [
-  "dev", "code", "codes", "stack", "byte", "bit", "api", "git",
-  "repo", "ship", "deploy", "cli", "build", "compile", "runtime",
-];
+    container.innerHTML = `
+      <header class="blog-header">
+        <a href="/blog" class="blog-back">← ${t("blog.back")}</a>
+        <h1>${escapeHtml(post.title)}</h1>
+        ${post.date ? `<time class="blog-meta">${formatDate(post.date)}</time>` : ""}
+      </header>
+      <div class="blog-body">${post.html}</div>
+    `;
+  } catch (error) {
+    container.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+  }
+}
 
-const aiNames = [
-  "ai", "bot", "gpt", "llm", "agent", "ml", "neural", "prompt",
-  "chat", "assist", "brain", "smart", "auto",
-];
-
-const creativeNames = [
-  "pixel", "dot", "cube", "loop", "wave", "spark", "glow", "nova",
-  "lumen", "flare", "drift", "echo", "vibe", "haven", "orbit",
-];
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export function initializeBlogPage() {
   const container = document.getElementById("blog-content");
   if (!container) return;
 
-  container.innerHTML = `
-    <header class="blog-header">
-      <h1>${t("blog.title")}</h1>
-      <p class="blog-meta">${t("blog.meta")}</p>
-      <p class="blog-intro">${t("blog.intro")}</p>
-    </header>
+  // Extract slug from /blog/:slug
+  const path = window.location.pathname;
+  const match = path.match(/^\/blog\/(.+)$/);
 
-    <section class="blog-section">
-      <h2>${t("blog.why.title")}</h2>
-      <p>${t("blog.why.body")}</p>
-      <ul>
-        <li><strong>${t("blog.why.tip1.title")}</strong> — ${t("blog.why.tip1.desc")}</li>
-        <li><strong>${t("blog.why.tip2.title")}</strong> — ${t("blog.why.tip2.desc")}</li>
-        <li><strong>${t("blog.why.tip3.title")}</strong> — ${t("blog.why.tip3.desc")}</li>
-        <li><strong>${t("blog.why.tip4.title")}</strong> — ${t("blog.why.tip4.desc")}</li>
-      </ul>
-    </section>
+  if (match) {
+    renderPost(decodeURIComponent(match[1]));
+  } else {
+    renderList();
+  }
 
-    <section class="blog-section">
-      <h2>${t("blog.portfolio.title")}</h2>
-      <p>${t("blog.portfolio.body")}</p>
-      ${renderDomainGroup(portfolioNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.blog.title")}</h2>
-      <p>${t("blog.blog.body")}</p>
-      ${renderDomainGroup(blogNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.startup.title")}</h2>
-      <p>${t("blog.startup.body")}</p>
-      ${renderDomainGroup(startupNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.side.title")}</h2>
-      <p>${t("blog.side.body")}</p>
-      ${renderDomainGroup(sideProjectNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.dev.title")}</h2>
-      <p>${t("blog.dev.body")}</p>
-      ${renderDomainGroup(devNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.ai.title")}</h2>
-      <p>${t("blog.ai.body")}</p>
-      ${renderDomainGroup(aiNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.creative.title")}</h2>
-      <p>${t("blog.creative.body")}</p>
-      ${renderDomainGroup(creativeNames)}
-    </section>
-
-    <section class="blog-section">
-      <h2>${t("blog.cta.title")}</h2>
-      <p>${t("blog.cta.body")}</p>
-      <button type="button" class="primary-button blog-cta-btn" id="blog-cta-btn">${t("blog.cta.button")}</button>
-    </section>
-  `;
-
-  // Click handlers
+  // Delegate clicks for domain chips
   container.addEventListener("click", (e) => {
     const chip = e.target.closest(".domain-chip");
     if (chip) {
       const name = chip.dataset.name;
       navigateTo(`/?check=${encodeURIComponent(name)}`);
-      return;
-    }
-
-    if (e.target.closest("#blog-cta-btn")) {
-      navigateTo("/");
     }
   });
 }
