@@ -220,14 +220,13 @@ async function runPeriodicValidation(fastify) {
   fastify.log.info("Starting periodic DNS validation...");
 
   while (true) {
-    const [rows] = await fastify.mysql.execute(
+    const [rows] = await fastify.mysql.query(
       `SELECT s.id, s.subdomain, s.record_value, s.record_type,
               s.warning_count, s.user_id, m.domain_name
        FROM subdomains s
        JOIN managed_domains m ON s.domain_id = m.id
        ORDER BY s.id
-       LIMIT ? OFFSET ?`,
-      [batchSize, offset]
+       LIMIT ${Number(batchSize)} OFFSET ${Number(offset)}`
     );
 
     if (rows.length === 0) break;
