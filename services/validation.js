@@ -1,6 +1,7 @@
 const net = require("net");
 const dns = require("dns/promises");
 const bindService = require("./bind");
+const { deleteSubdomain } = require("./subdomain");
 const { sendValidationWarningEmail } = require("./email");
 const config = require("../configs/index");
 
@@ -87,55 +88,6 @@ async function processWithConcurrency(items, concurrency, fn) {
 }
 
 /**
- * Remove a subdomain record (reuses existing DELETE pattern)
- * DB first (transaction) → BIND9 → commit/rollback
- */
-async function removeSubdomainRecord(fastify, record) {
-  const connection = await fastify.mysql.getConnection();
-  try {
-    const [txtRows] = await connection.execute(
-      "SELECT host_prefix FROM subdomain_txt_records WHERE subdomain_id = ?",
-      [record.id]
-    );
-
-    await connection.beginTransaction();
-    await connection.execute(
-      "DELETE FROM subdomain_txt_records WHERE subdomain_id = ?",
-      [record.id]
-    );
-    await connection.execute("DELETE FROM subdomains WHERE id = ?", [
-      record.id,
-    ]);
-
-    await bindService.deleteDnsRecord(
-      record.subdomain,
-      record.domain_name,
-      bindService.normalizeRecordType(record.record_type)
-    );
-
-    for (const txt of txtRows) {
-      await bindService.deleteTxtRecord(
-        record.subdomain,
-        record.domain_name,
-        txt.host_prefix
-      );
-    }
-
-    await connection.commit();
-    return true;
-  } catch (error) {
-    try {
-      await connection.rollback();
-    } catch (rbErr) {
-      fastify.log.error(rbErr, "Rollback failed during validation cleanup");
-    }
-    throw error;
-  } finally {
-    connection.release();
-  }
-}
-
-/**
  * Handle validation result for a single record
  */
 async function handleValidationResult(fastify, record, isValid) {
@@ -196,7 +148,12 @@ async function handleValidationResult(fastify, record, isValid) {
     }
 
     // Delete record regardless of email result
-    await removeSubdomainRecord(fastify, record);
+    await deleteSubdomain(fastify, {
+      recordId: record.id,
+      subdomain: record.subdomain,
+      domain: record.domain_name,
+      recordType: bindService.normalizeRecordType(record.record_type),
+    });
     fastify.log.info(
       `Deleted invalid record: ${record.subdomain}.${record.domain_name}`
     );
