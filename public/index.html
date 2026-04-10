@@ -256,26 +256,19 @@
       </div>
     </template>
 
-    <template id="template-guide">
-      <div class="content-page">
-        <h1 data-i18n="guide.title">Guide</h1>
-        <p class="page-subtitle" data-i18n="guide.subtitle">Follow these steps to claim and manage your domain.</p>
-        <div class="content-section">
-          <div class="step-cards">
-            <article>
-              <h3 data-i18n="guide.step1.title">1. Check availability</h3>
-              <p data-i18n="guide.step1.desc">Enter your preferred domain on the homepage.</p>
-            </article>
-            <article>
-              <h3 data-i18n="guide.step2.title">2. Create your record</h3>
-              <p data-i18n="guide.step2.desc">Create an account, log in, and add the IPv4 address.</p>
-            </article>
-            <article>
-              <h3 data-i18n="guide.step3.title">3. Manage changes</h3>
-              <p data-i18n="guide.step3.desc">Visit the dashboard to update or delete a domain.</p>
-            </article>
-          </div>
-          <p class="tip" data-i18n="guide.tip">Most DNS changes become visible worldwide within 5 minutes.</p>
+    <template id="template-docs">
+      <div class="docs-layout">
+        <aside class="docs-sidebar" id="docs-sidebar">
+          <nav aria-label="Documentation">
+            <ul>
+              <li><a href="#quick-start" class="docs-link active" data-doc="quick-start" data-i18n="docs.nav.quickstart">Quick Start</a></li>
+              <li><a href="#vercel" class="docs-link" data-doc="vercel" data-i18n="docs.nav.vercel">Vercel Setup</a></li>
+              <li><a href="#record-types" class="docs-link" data-doc="record-types" data-i18n="docs.nav.records">Record Types</a></li>
+            </ul>
+          </nav>
+        </aside>
+        <div class="docs-content" id="docs-content">
+          <!-- Filled by JS -->
         </div>
       </div>
     </template>

@@ -1,12 +1,9 @@
 import { initializeLandingPage } from './home.js';
 import { initializeLoginPage, initializeSignupPage } from './auth.js';
 import { initializeDashboardPage } from './dashboard.js';
+import { initializeDocsPage } from './docs.js';
 import { renderNavbar, renderFooter, resetMessage } from './ui.js';
 import { applyTranslations, loadLang, getLang } from './i18n.js';
-
-function initializeGuidePage() {
-  resetMessage();
-}
 
 function initializeHelpPage() {
   resetMessage();
@@ -18,7 +15,8 @@ const routes = {
     "/login": { templateId: "template-login", init: initializeLoginPage, title: "Login - Sitey" },
     "/signup": { templateId: "template-signup", init: initializeSignupPage, title: "Sign Up - Sitey" },
     "/dashboard": { templateId: "template-dashboard", init: initializeDashboardPage, title: "Dashboard - Sitey" },
-    "/guide": { templateId: "template-guide", init: initializeGuidePage, title: "Guide - Sitey" },
+    "/docs": { templateId: "template-docs", init: initializeDocsPage, title: "Docs - Sitey" },
+    "/guide": { templateId: "template-docs", init: initializeDocsPage, title: "Docs - Sitey" },
     "/help": { templateId: "template-help", init: initializeHelpPage, title: "Help - Sitey" },
 };
 

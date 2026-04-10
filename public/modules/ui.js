@@ -140,7 +140,7 @@ export function renderNavbar(currentPath) {
 
   const navLinks = [
     { path: "/", label: t("nav.home") },
-    { path: "/guide", label: t("nav.guide") },
+    { path: "/docs", label: t("nav.docs") },
     { path: "/help", label: t("nav.help") },
   ];
 

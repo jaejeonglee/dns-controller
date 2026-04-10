@@ -766,7 +766,161 @@ body.dark-theme .record-type-badge.type-cname { color: var(--primary-color); }
 }
 
 /* ============================================
-   11. Content Sections (Guide, Help)
+   11. Docs Layout
+   ============================================ */
+.docs-layout {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 40px;
+  max-width: 1080px;
+  margin: 48px auto 80px;
+  padding: 0 24px;
+  min-height: 60vh;
+}
+
+.docs-sidebar {
+  position: sticky;
+  top: calc(var(--nav-height) + 24px);
+  align-self: start;
+}
+
+.docs-sidebar ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.docs-link {
+  display: block;
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--muted-color);
+  text-decoration: none;
+  transition: background var(--transition), color var(--transition);
+}
+
+.docs-link:hover {
+  background: var(--container-bg);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.docs-link.active {
+  background: var(--container-bg);
+  color: var(--accent-color);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.docs-content {
+  min-width: 0;
+}
+
+.docs-content h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.docs-content .docs-subtitle {
+  color: var(--muted-color);
+  margin-bottom: 32px;
+}
+
+.docs-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 32px 0 12px;
+  color: var(--text-color);
+}
+
+.docs-content h2:first-of-type {
+  margin-top: 0;
+}
+
+.docs-content p {
+  line-height: 1.7;
+  color: var(--muted-color);
+  margin-bottom: 16px;
+}
+
+.docs-content ol, .docs-content ul {
+  margin: 0 0 16px 24px;
+  color: var(--muted-color);
+  line-height: 1.7;
+}
+
+.docs-content li {
+  margin-bottom: 6px;
+}
+
+.docs-content code {
+  font-family: "SF Mono", "Fira Code", monospace;
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--background-color);
+  border: 1px solid var(--border-color);
+  color: var(--accent-color);
+}
+
+.docs-content pre {
+  margin: 16px 0;
+  padding: 20px;
+  border-radius: var(--radius-md);
+  background: var(--container-bg);
+  border: 1px solid var(--border-color);
+  overflow-x: auto;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.docs-content pre code {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-color);
+}
+
+body.dark-theme .docs-content pre {
+  background: #0f172a;
+}
+
+.docs-content .callout {
+  margin: 20px 0;
+  padding: 16px 20px;
+  border-left: 3px solid var(--accent-color);
+  background: rgba(77, 165, 179, 0.06);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 0.9rem;
+  color: var(--muted-color);
+}
+
+.docs-content .callout strong {
+  color: var(--text-color);
+}
+
+/* Mobile sidebar toggle */
+.docs-sidebar-toggle {
+  display: none;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--container-bg);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+}
+
+/* ============================================
+   11b. Content Sections (Help)
    ============================================ */
 .content-page {
   max-width: 720px;
@@ -1077,6 +1231,11 @@ body.dark-theme .toast.error {
 
   .feature-grid { grid-template-columns: 1fr; gap: 16px; }
   .step-cards { grid-template-columns: 1fr; }
+
+  .docs-layout { grid-template-columns: 1fr; gap: 0; margin-top: 24px; }
+  .docs-sidebar { position: static; }
+  .docs-sidebar ul { flex-direction: row; flex-wrap: wrap; gap: 6px; margin-bottom: 24px; }
+  .docs-link { padding: 8px 14px; font-size: 0.85rem; }
 
   .nav-toggle { display: flex; }
 
