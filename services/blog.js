@@ -5,7 +5,7 @@ const { marked } = require("marked");
 
 const BLOG_DIR = path.join(__dirname, "..", "content", "blog");
 const SUPPORTED_LANGS = ["en", "ko"];
-const DEFAULT_LANG = "en";
+const DEFAULT_LANG = "ko";
 
 // In-memory cache
 const cache = new Map();
@@ -81,14 +81,18 @@ async function listPosts(lang) {
     throw err;
   }
 
-  const suffix = `.${normalized}.md`;
-  const posts = [];
-
+  // Find unique slugs across all supported languages
+  const slugs = new Set();
+  const langPattern = new RegExp(`^(.+)\\.(${SUPPORTED_LANGS.join("|")})\\.md$`);
   for (const file of files) {
-    if (!file.endsWith(suffix)) continue;
-    const slug = file.slice(0, -suffix.length);
-    if (!isValidSlug(slug)) continue;
+    const match = file.match(langPattern);
+    if (match && isValidSlug(match[1])) {
+      slugs.add(match[1]);
+    }
+  }
 
+  const posts = [];
+  for (const slug of slugs) {
     try {
       const post = await loadPost(slug, normalized);
       posts.push({
