@@ -36,7 +36,11 @@ async function userRoutes(fastify, options) {
   // ----------------------------------------------------
   // POST /api/auth/signup (sign up)
   // ----------------------------------------------------
-  fastify.post("/signup", async (request, reply) => {
+  fastify.post("/signup", {
+    config: {
+      rateLimit: { max: 5, timeWindow: "15 minutes" },
+    },
+  }, async (request, reply) => {
     const { email, password } = request.body;
 
     if (!email || !password) {
@@ -119,7 +123,11 @@ async function userRoutes(fastify, options) {
   // ----------------------------------------------------
   // POST /api/auth/login (log in)
   // ----------------------------------------------------
-  fastify.post("/login", async (request, reply) => {
+  fastify.post("/login", {
+    config: {
+      rateLimit: { max: 10, timeWindow: "15 minutes" },
+    },
+  }, async (request, reply) => {
     const { email, password } = request.body;
 
     if (!email || !password) {

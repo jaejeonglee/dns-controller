@@ -18,6 +18,15 @@ const apiRoutes = require("./routes/index");
 fastify.register(require("./plugins/db"));
 fastify.register(require("./plugins/auth"));
 fastify.register(require("./plugins/validation-scheduler"));
+fastify.register(require("@fastify/rate-limit"), {
+  global: true,
+  max: 100,
+  timeWindow: "1 minute",
+  keyGenerator: (request) =>
+    request.headers["cf-connecting-ip"] ||
+    request.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    request.ip,
+});
 fastify.register(require("@fastify/static"), {
   root: path.join(__dirname, "public"),
   prefix: "/",

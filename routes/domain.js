@@ -10,6 +10,25 @@ const HOSTNAME_REGEX =
 
 const isValidSubdomain = (name) => SUBDOMAIN_REGEX.test(name);
 
+const TXT_MAX_LENGTH = 512;
+
+function validateTxtValue(value) {
+  const trimmed = (value || "").trim();
+  if (!trimmed) {
+    return { valid: false, message: "TXT value is required." };
+  }
+  if (trimmed.length > TXT_MAX_LENGTH) {
+    return { valid: false, message: `TXT value must be ${TXT_MAX_LENGTH} characters or fewer.` };
+  }
+  if (/[\r\n]/.test(trimmed)) {
+    return { valid: false, message: "TXT value must not contain newlines." };
+  }
+  if (/["\\\x00-\x1f]/.test(trimmed)) {
+    return { valid: false, message: "TXT value contains invalid characters." };
+  }
+  return { valid: true, value: trimmed };
+}
+
 function normalizeDomainName(name = "") {
   return String(name).trim().toLowerCase();
 }
@@ -361,9 +380,13 @@ async function domainRoutes(fastify, options) {
         if (recordType === "CNAME" && typeof txtValue !== "undefined") {
           const hostPrefix = "_vercel";
           if (txtValue) {
+            const txtValidation = validateTxtValue(txtValue);
+            if (!txtValidation.valid) {
+              return reply.code(400).send({ error: txtValidation.message });
+            }
             await connection.execute(
               "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
-              [record.id, hostPrefix, txtValue]
+              [record.id, hostPrefix, txtValidation.value]
             );
           } else {
             await connection.execute(
@@ -384,10 +407,11 @@ async function domainRoutes(fastify, options) {
         if (recordType === "CNAME" && typeof txtValue !== "undefined") {
           const hostPrefix = "_vercel";
           if (txtValue) {
+            const sanitizedTxt = validateTxtValue(txtValue).value;
             await bindService.createOrUpdateTxtRecord(
               domainEntry.domain,
               hostPrefix,
-              txtValue
+              sanitizedTxt
             );
           } else {
             await bindService.deleteTxtRecord(
@@ -542,6 +566,12 @@ async function domainRoutes(fastify, options) {
           .send({ error: "Domain and TXT value are required" });
       }
 
+      const txtValidation = validateTxtValue(txtValue);
+      if (!txtValidation.valid) {
+        return reply.code(400).send({ error: txtValidation.message });
+      }
+      const sanitizedTxtValue = txtValidation.value;
+
       try {
         const managedDomains = await getManagedDomains(fastify);
         const domainEntry = managedDomains.find(
@@ -572,14 +602,14 @@ async function domainRoutes(fastify, options) {
         await bindService.createOrUpdateTxtRecord(
           domainEntry.domain,
           hostPrefix,
-          txtValue
+          sanitizedTxtValue
         );
 
         // Upsert into the database
         await fastify.mysql.execute(
           "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) " +
             "ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
-          [subdomainId, hostPrefix, txtValue]
+          [subdomainId, hostPrefix, sanitizedTxtValue]
         );
 
         fastify.log.info(
