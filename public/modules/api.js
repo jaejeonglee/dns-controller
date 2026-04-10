@@ -1,11 +1,26 @@
 import { navigateTo } from "./router.js";
 
-export function getAuthToken() {
-  return localStorage.getItem("token");
+// Cached user info from /api/auth/me
+let currentUser = null;
+
+export function getCurrentUser() {
+  return currentUser;
+}
+
+export async function fetchCurrentUser() {
+  try {
+    const data = await apiFetch("/api/auth/me");
+    currentUser = data;
+    return data;
+  } catch {
+    currentUser = null;
+    return null;
+  }
 }
 
 export async function apiFetch(url, options = {}) {
   const config = { ...options };
+  config.credentials = "same-origin"; // Send cookies
   config.headers = {
     Accept: "application/json",
     ...(options.headers || {}),
@@ -16,6 +31,9 @@ export async function apiFetch(url, options = {}) {
       config.headers["Content-Type"] || "application/json";
     config.body = JSON.stringify(config.body);
   }
+
+  // Remove manual Authorization headers (cookie handles auth now)
+  delete config.headers.Authorization;
 
   try {
     const response = await fetch(url, config);
@@ -38,7 +56,12 @@ export async function apiFetch(url, options = {}) {
   }
 }
 
-export function logoutAndRedirect(target = "/") {
-  localStorage.removeItem("token");
+export async function logoutAndRedirect(target = "/") {
+  try {
+    await apiFetch("/api/auth/logout", { method: "POST" });
+  } catch {
+    // Ignore logout errors
+  }
+  currentUser = null;
   navigateTo(target);
 }

@@ -1,10 +1,11 @@
 import { router, navigateTo } from './modules/router.js';
 import { loadInitialTheme } from './modules/theme.js';
 import { getSavedLang, loadLang } from './modules/i18n.js';
+import { fetchCurrentUser } from './modules/api.js';
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // Load saved language
-  await loadLang(getSavedLang());
+  // Load saved language + check auth status
+  await Promise.all([loadLang(getSavedLang()), fetchCurrentUser()]);
   // Handle client-side routing for all internal links
   document.body.addEventListener("click", (event) => {
     const link = event.target.closest("a");

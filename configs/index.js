@@ -1,6 +1,14 @@
 require("dotenv").config();
 
-const required = ["JWT_SECRET", "DB_USER", "DB_PASSWORD", "DB_DATABASE"];
+const required = [
+  "JWT_SECRET",
+  "DB_USER",
+  "DB_PASSWORD",
+  "DB_DATABASE",
+  "GOOGLE_CLIENT_ID",
+  "GOOGLE_CLIENT_SECRET",
+  "GOOGLE_CALLBACK_URL",
+];
 const devMode =
   String(process.env.BIND_DEV_MODE || "").trim().toLowerCase() === "true";
 
@@ -39,12 +47,16 @@ module.exports = {
     zoneFilePath: (domain) => `${process.env.BIND_DB_PATH}/db.${domain}`,
     devMode,
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+  },
   email: {
     from: process.env.EMAIL_FROM,
-    verificationUrl: process.env.EMAIL_VERIFICATION_URL,
     gmail: {
-      clientId: process.env.GMAIL_CLIENT_ID,
-      clientSecret: process.env.GMAIL_CLIENT_SECRET,
+      clientId: process.env.GMAIL_CLIENT_ID || process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GMAIL_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET,
       redirectUri: process.env.GMAIL_REDIRECT_URI,
       refreshToken: process.env.GMAIL_REFRESH_TOKEN,
       user: process.env.GMAIL_SENDER || process.env.GMAIL_USER || process.env.SMTP_USER,

@@ -1,4 +1,4 @@
-import { getAuthToken, logoutAndRedirect } from "./api.js";
+import { getCurrentUser, logoutAndRedirect } from "./api.js";
 import { toggleTheme } from "./theme.js";
 import { t } from "./i18n.js";
 
@@ -136,7 +136,7 @@ export function renderNavbar(currentPath) {
   const container = document.getElementById("navbar");
   if (!container) return;
 
-  const token = getAuthToken();
+  const user = getCurrentUser();
 
   const navLinks = [
     { path: "/", label: t("nav.home") },
@@ -144,11 +144,11 @@ export function renderNavbar(currentPath) {
     { path: "/help", label: t("nav.help") },
   ];
 
-  if (token) {
+  if (user) {
     navLinks.push({ path: "/dashboard", label: t("nav.dashboard") });
   }
 
-  const authLink = token
+  const authLink = user
     ? `<button type="button" id="nav-logout-btn" class="nav-auth-btn">${t("nav.logout")}</button>`
     : `<a href="/login" class="nav-auth-btn ${currentPath === "/login" ? "active" : ""}">${t("nav.login")}</a>`;
 

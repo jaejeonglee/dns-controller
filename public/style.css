@@ -602,6 +602,31 @@ input::placeholder { color: var(--muted-color); }
   text-decoration: none;
 }
 
+.google-login-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 24px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  background: var(--container-bg);
+  color: var(--text-color);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition), box-shadow var(--transition);
+  margin-top: 16px;
+}
+
+.google-login-button:hover {
+  background: var(--background-color);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
 /* ============================================
    10. Dashboard
    ============================================ */

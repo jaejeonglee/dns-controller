@@ -1,4 +1,4 @@
-import { apiFetch, getAuthToken } from "./api.js";
+import { apiFetch, getCurrentUser } from "./api.js";
 import { navigateTo } from "./router.js";
 import { showMessage, setButtonLoading, clearButtonLoading, showLoader, hideLoader, setHidden, clearChildren, resetMessage, formatDomainList } from "./ui.js";
 import { normalizeRecordType, validateRecordValue } from "./util.js";
@@ -157,8 +157,7 @@ export function initializeLandingPage() {
         return;
       }
 
-      const token = getAuthToken();
-      if (!token) {
+      if (!getCurrentUser()) {
         navigateTo("/login");
         return;
       }
@@ -230,8 +229,7 @@ export function initializeLandingPage() {
       event.preventDefault();
       if (!activeCreateContext) return;
 
-      const token = getAuthToken();
-      if (!token) {
+      if (!getCurrentUser()) {
         closeCreateModal();
         navigateTo("/login");
         return;
@@ -257,9 +255,6 @@ export function initializeLandingPage() {
       try {
         await apiFetch("/api/subdomains", {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           body: {
             subdomain: activeCreateContext.subdomain,
             domain: activeCreateContext.domain,

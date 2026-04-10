@@ -1,4 +1,4 @@
-import { getAuthToken, apiFetch } from "./api.js";
+import { getCurrentUser, apiFetch } from "./api.js";
 import { navigateTo } from "./router.js";
 import { showMessage, setButtonLoading, clearButtonLoading, showLoader, hideLoader, resetMessage } from "./ui.js";
 import { normalizeRecordType, validateRecordValue } from "./util.js";
@@ -8,9 +8,9 @@ import { t } from "./i18n.js";
 
 export function initializeDashboardPage() {
   resetMessage();
-  const token = getAuthToken();
+  const user = getCurrentUser();
 
-  if (!token) {
+  if (!user) {
     navigateTo("/login");
     return;
   }
@@ -169,7 +169,6 @@ export function initializeDashboardPage() {
 
     try {
       const data = await apiFetch("/api/subdomains", {
-        headers: { Authorization: `Bearer ${token}` },
       });
 
       const items = Array.isArray(data) ? data : [];
@@ -235,9 +234,6 @@ export function initializeDashboardPage() {
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "PUT",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body,
       });
 
@@ -279,9 +275,6 @@ export function initializeDashboardPage() {
     try {
       await apiFetch(`/api/subdomains/${encodeURIComponent(subdomain)}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: { domain },
       });
 

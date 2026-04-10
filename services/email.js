@@ -27,16 +27,6 @@ function ensureFromAddress(defaultUser) {
   return from;
 }
 
-function ensureVerificationUrl() {
-  const url = config.email?.verificationUrl;
-  if (!url) {
-    throw new Error(
-      "EMAIL_VERIFICATION_URL is not configured. Please set it to the verification endpoint URL."
-    );
-  }
-  return url;
-}
-
 function getGmailClient() {
   if (gmailClient) {
     return gmailClient;
@@ -70,44 +60,6 @@ function buildRawMessage({ from, to, subject, html }) {
     .replace(/\+/g, "-")
     .replace(/\//g, "_")
     .replace(/=+$/, "");
-}
-
-async function sendVerificationEmail(to, token) {
-  const gmail = getGmailClient();
-  const { user } = ensureGmailConfig();
-  const from = ensureFromAddress(user);
-  const verificationBaseUrl = ensureVerificationUrl();
-
-  const verificationLink = `${verificationBaseUrl}${
-    verificationBaseUrl.includes("?") ? "&" : "?"
-  }token=${encodeURIComponent(token)}`;
-
-  const subject = "Verify your Sitey account";
-  const html = `
-    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1d2330;">
-      <h2 style="color: #1c2d4a;">Welcome to Sitey!</h2>
-      <p>Please confirm your email address by clicking the button below.</p>
-      <p style="margin: 24px 0;">
-        <a href="${verificationLink}" style="display: inline-block; padding: 10px 18px; background: #1c2d4a; color: #ffffff; border-radius: 6px; text-decoration: none;">
-          Verify email address
-        </a>
-      </p>
-      <p>If the button does not work, copy and paste this link into your browser:</p>
-      <p><a href="${verificationLink}">${verificationLink}</a></p>
-      <p style="margin-top: 24px; font-size: 0.9rem; color: #4b5563;">
-        If you did not create an account, you can safely ignore this email.
-      </p>
-    </div>
-  `;
-
-  const raw = buildRawMessage({ from, to, subject, html });
-
-  await gmail.users.messages.send({
-    userId: "me",
-    requestBody: {
-      raw,
-    },
-  });
 }
 
 async function sendValidationWarningEmail(to, subdomainInfo) {
@@ -144,6 +96,5 @@ async function sendValidationWarningEmail(to, subdomainInfo) {
 }
 
 module.exports = {
-  sendVerificationEmail,
   sendValidationWarningEmail,
 };
