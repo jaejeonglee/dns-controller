@@ -16,6 +16,11 @@ if (!devMode && !process.env.BIND_DB_PATH) {
   required.push("BIND_DB_PATH");
 }
 
+if (!devMode) {
+  if (!process.env.TELEGRAM_BOT_TOKEN) required.push("TELEGRAM_BOT_TOKEN");
+  if (!process.env.TELEGRAM_ALERT_CHAT_ID) required.push("TELEGRAM_ALERT_CHAT_ID");
+}
+
 function parseIntEnv(envKey, defaultVal) {
   const raw = process.env[envKey];
   if (raw === undefined || raw === "") return defaultVal;
@@ -71,6 +76,10 @@ module.exports = {
     tcpTimeoutMs: parseIntEnv("VALIDATION_TCP_TIMEOUT_MS", 3000),
     concurrency: parseIntEnv("VALIDATION_CONCURRENCY", 5),
     batchSize: parseIntEnv("VALIDATION_BATCH_SIZE", 50),
+  },
+  telegram: {
+    botToken: process.env.TELEGRAM_BOT_TOKEN,
+    alertChatId: process.env.TELEGRAM_ALERT_CHAT_ID,
   },
   server: {
     port: process.env.PORT || 3000,

@@ -282,6 +282,69 @@ async function createOrUpdateTxtRecord(domain, hostPrefix, txtValue) {
   });
 }
 
+/**
+ * Read a single DNS record value (A or CNAME)
+ */
+async function readDnsRecord(subdomain, domain, recordType) {
+  if (isBindDevMode) {
+    return null;
+  }
+
+  const zoneFilePath = getZoneFilePath(domain);
+  let data;
+  try {
+    data = await fs.readFile(zoneFilePath, "utf8");
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      throw new Error("Zone file not found for " + domain + " at " + zoneFilePath + ". Check BIND_DB_PATH and zone file permissions.");
+    }
+    throw error;
+  }
+
+  const escapedName = escapeRegex(subdomain);
+  const type = normalizeRecordType(recordType);
+  const regex = new RegExp(`^${escapedName}\\s+IN\\s+${escapeRegex(type)}\\s+(\\S+.*)$`, "im");
+  const match = data.match(regex);
+  if (!match) {
+    return null;
+  }
+  return { name: subdomain, type, value: match[1].trim() };
+}
+
+/**
+ * List all A and CNAME records from a domain's zone file
+ */
+async function listDnsRecords(domain) {
+  if (isBindDevMode) {
+    return [];
+  }
+
+  return withDomainLock(domain, async () => {
+    const zoneFilePath = getZoneFilePath(domain);
+    let data;
+    try {
+      data = await fs.readFile(zoneFilePath, "utf8");
+    } catch (error) {
+      if (error.code === "ENOENT") {
+        throw new Error("Zone file not found for " + domain + " at " + zoneFilePath + ". Check BIND_DB_PATH and zone file permissions.");
+      }
+      throw error;
+    }
+
+    const results = [];
+    const regex = /^(\S+)\s+IN\s+(A|CNAME)\s+(\S+.*)$/gim;
+    let match;
+    while ((match = regex.exec(data)) !== null) {
+      results.push({
+        name: match[1],
+        type: match[2].toUpperCase(),
+        value: match[3].trim(),
+      });
+    }
+    return results;
+  });
+}
+
 async function deleteTxtRecord(subdomain, domain, hostPrefix) {
   return withDomainLock(domain, async () => {
     const zoneFilePath = getZoneFilePath(domain);
@@ -323,6 +386,8 @@ async function deleteTxtRecord(subdomain, domain, hostPrefix) {
 module.exports = {
   setLogger,
   findDnsRecord,
+  readDnsRecord,
+  listDnsRecords,
   createDnsRecord,
   updateDnsRecord,
   deleteDnsRecord,

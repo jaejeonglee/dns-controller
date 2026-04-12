@@ -2,6 +2,7 @@
 const bindService = require("../services/bind");
 const { validateRecord } = require("../services/validation");
 const { createSubdomain, updateSubdomain, deleteSubdomain } = require("../services/subdomain");
+const { getManagedDomains } = require("../services/managedDomain");
 
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const IPV4_REGEX =
@@ -28,22 +29,6 @@ function validateTxtValue(value) {
     return { valid: false, message: "TXT value contains invalid characters." };
   }
   return { valid: true, value: trimmed };
-}
-
-function normalizeDomainName(name = "") {
-  return String(name).trim().toLowerCase();
-}
-
-async function getManagedDomains(fastify) {
-  const [rows] = await fastify.mysql.execute(
-    "SELECT id, domain_name FROM managed_domains WHERE is_active = 1"
-  );
-
-  return rows.map((row) => ({
-    id: row.id,
-    domain: row.domain_name,
-    normalized: normalizeDomainName(row.domain_name),
-  }));
 }
 
 function normalizeRecordType(recordType = "A") {

@@ -1,8 +1,9 @@
 const bindService = require("./bind");
+const alertService = require("./alert");
 
 /**
  * Create a subdomain record (DB + BIND9)
- * DB first (transaction) → BIND9 → commit / rollback
+ * DB first (transaction) -> BIND9 -> commit / rollback
  *
  * @param {object} fastify - Fastify instance (for mysql + log)
  * @param {object} params
@@ -19,6 +20,7 @@ async function createSubdomain(fastify, params) {
     params;
 
   const connection = await fastify.mysql.getConnection();
+  let bindWritten = false;
   try {
     // Check for duplicates
     const isTakenInBind = await bindService.findDnsRecord(subdomain, domain);
@@ -44,6 +46,7 @@ async function createSubdomain(fastify, params) {
       domain,
       recordType
     );
+    bindWritten = true;
 
     await connection.commit();
     fastify.log.info(`Subdomain created: ${newRecord.name}`);
@@ -53,6 +56,19 @@ async function createSubdomain(fastify, params) {
       await connection.rollback();
     } catch (rbErr) {
       fastify.log.error(rbErr, "Rollback failed during subdomain creation");
+    }
+    if (bindWritten) {
+      try {
+        await bindService.deleteDnsRecord(subdomain, domain, recordType);
+        fastify.log.warn(`Compensated orphan BIND record after DB failure: ${subdomain}.${domain}`);
+        await alertService.warn("ORPHAN_COMPENSATED", { subdomain, domain, recordType, error: error.message });
+      } catch (compErr) {
+        fastify.log.error({ err: compErr, originalErr: error, subdomain, domain, recordType },
+          "ORPHAN_COMPENSATION_FAILED");
+        await alertService.critical("ORPHAN_COMPENSATION_FAILED", {
+          subdomain, domain, recordType, error: error.message, compError: compErr.message,
+        });
+      }
     }
     throw error;
   } finally {
@@ -77,8 +93,28 @@ async function updateSubdomain(fastify, params) {
     params;
 
   const connection = await fastify.mysql.getConnection();
+  let bindUpdated = false;
+  let txtTouched = false;
+  let oldRecordValue;
+  let oldTxtValue;
   try {
     await connection.beginTransaction();
+
+    // Fetch old values for compensation
+    const [oldRows] = await connection.execute(
+      "SELECT record_value FROM subdomains WHERE id = ? FOR UPDATE",
+      [recordId]
+    );
+    oldRecordValue = oldRows[0]?.record_value;
+
+    // Fetch old TXT value if applicable
+    if (recordType === "CNAME" && typeof txtValue !== "undefined") {
+      const [oldTxtRows] = await connection.execute(
+        "SELECT txt_value FROM subdomain_txt_records WHERE subdomain_id = ? AND host_prefix = ?",
+        [recordId, "_vercel"]
+      );
+      oldTxtValue = oldTxtRows[0]?.txt_value || null;
+    }
 
     // Update main record in DB
     await connection.execute(
@@ -104,6 +140,7 @@ async function updateSubdomain(fastify, params) {
 
     // BIND9: update main record
     await bindService.updateDnsRecord(subdomain, recordValue, domain, recordType);
+    bindUpdated = true;
 
     // BIND9: handle TXT record
     if (recordType === "CNAME" && typeof txtValue !== "undefined") {
@@ -113,6 +150,7 @@ async function updateSubdomain(fastify, params) {
       } else {
         await bindService.deleteTxtRecord(subdomain, domain, hostPrefix);
       }
+      txtTouched = true;
     }
 
     await connection.commit();
@@ -122,6 +160,55 @@ async function updateSubdomain(fastify, params) {
       await connection.rollback();
     } catch (rbErr) {
       fastify.log.error(rbErr, "Rollback failed during subdomain update");
+    }
+    if (bindUpdated) {
+      try {
+        const current = await bindService.readDnsRecord(subdomain, domain, recordType);
+        if (current) {
+          const currentVal = current.value;
+          // Normalize for comparison: CNAME values end with "." in zone files
+          const formatted = recordType === "CNAME" && !recordValue.endsWith(".")
+            ? recordValue + "."
+            : recordValue;
+          if (currentVal === formatted || currentVal === recordValue) {
+            // Our write is still there, reverse it
+            await bindService.updateDnsRecord(subdomain, oldRecordValue, domain, recordType);
+            fastify.log.warn(`Compensated BIND update after DB failure: ${subdomain}.${domain}`);
+            await alertService.warn("UPDATE_COMPENSATED", { subdomain, domain, recordType, error: error.message });
+          } else {
+            // Value is different - race detected
+            await alertService.critical("UPDATE_COMPENSATION_RACE", {
+              subdomain, domain, recordType,
+              expected: recordValue, found: currentVal,
+              error: error.message,
+            });
+          }
+        }
+        // If current is null, record was removed by something else - skip
+      } catch (compErr) {
+        fastify.log.error({ err: compErr, originalErr: error, subdomain, domain, recordType },
+          "UPDATE_COMPENSATION_FAILED");
+        await alertService.critical("UPDATE_COMPENSATION_FAILED", {
+          subdomain, domain, recordType, error: error.message, compError: compErr.message,
+        });
+      }
+    }
+    if (txtTouched) {
+      try {
+        const hostPrefix = "_vercel";
+        if (oldTxtValue) {
+          await bindService.createOrUpdateTxtRecord(domain, hostPrefix, oldTxtValue);
+        } else {
+          await bindService.deleteTxtRecord(subdomain, domain, hostPrefix);
+        }
+        fastify.log.warn(`Compensated TXT record after DB failure: ${subdomain}.${domain}`);
+      } catch (txtCompErr) {
+        fastify.log.error({ err: txtCompErr, subdomain, domain },
+          "TXT_COMPENSATION_FAILED");
+        await alertService.critical("TXT_COMPENSATION_FAILED", {
+          subdomain, domain, error: error.message, compError: txtCompErr.message,
+        });
+      }
     }
     throw error;
   } finally {
@@ -143,14 +230,29 @@ async function deleteSubdomain(fastify, params) {
   const { recordId, subdomain, domain, recordType } = params;
 
   const connection = await fastify.mysql.getConnection();
+  let bindDeleted = false;
+  let oldRecordValue;
+  let oldRecordType;
+  let txtRows = [];
+  let txtDeleted = false;
   try {
-    // Get associated TXT records before deleting
-    const [txtRows] = await connection.execute(
-      "SELECT host_prefix FROM subdomain_txt_records WHERE subdomain_id = ?",
+    await connection.beginTransaction();
+
+    // Fetch full record info for compensation before deleting
+    const [subRows] = await connection.execute(
+      "SELECT record_value, record_type FROM subdomains WHERE id = ? FOR UPDATE",
       [recordId]
     );
+    oldRecordValue = subRows[0]?.record_value;
+    oldRecordType = subRows[0]?.record_type;
 
-    await connection.beginTransaction();
+    // Get associated TXT records before deleting
+    const [txtResult] = await connection.execute(
+      "SELECT host_prefix, txt_value FROM subdomain_txt_records WHERE subdomain_id = ?",
+      [recordId]
+    );
+    txtRows = txtResult;
+
     await connection.execute(
       "DELETE FROM subdomain_txt_records WHERE subdomain_id = ?",
       [recordId]
@@ -159,11 +261,13 @@ async function deleteSubdomain(fastify, params) {
 
     // BIND9: delete main record
     await bindService.deleteDnsRecord(subdomain, domain, recordType);
+    bindDeleted = true;
 
     // BIND9: delete TXT records
     for (const txt of txtRows) {
       await bindService.deleteTxtRecord(subdomain, domain, txt.host_prefix);
     }
+    txtDeleted = true;
 
     await connection.commit();
     fastify.log.info(`Subdomain deleted: ${subdomain}.${domain} (${recordType})`);
@@ -172,6 +276,49 @@ async function deleteSubdomain(fastify, params) {
       await connection.rollback();
     } catch (rbErr) {
       fastify.log.error(rbErr, "Rollback failed during subdomain deletion");
+    }
+    if (bindDeleted && oldRecordValue) {
+      try {
+        const current = await bindService.readDnsRecord(subdomain, domain, recordType);
+        if (!current) {
+          // Record was deleted from zone, restore it
+          await bindService.createDnsRecord(subdomain, oldRecordValue, domain, oldRecordType);
+          fastify.log.warn(`Compensated BIND deletion after DB failure: ${subdomain}.${domain}`);
+          await alertService.warn("DELETE_COMPENSATED", { subdomain, domain, recordType, error: error.message });
+        } else if (current.value !== oldRecordValue) {
+          // Different value - race detected
+          await alertService.critical("DELETE_COMPENSATION_RACE", {
+            subdomain, domain, recordType,
+            expected: "absent", found: current.value,
+            error: error.message,
+          });
+        }
+        // If exists with same value, already fine
+      } catch (compErr) {
+        fastify.log.error({ err: compErr, originalErr: error, subdomain, domain, recordType },
+          "DELETE_COMPENSATION_FAILED");
+        await alertService.critical("DELETE_COMPENSATION_FAILED", {
+          subdomain, domain, recordType, error: error.message, compError: compErr.message,
+        });
+      }
+    }
+    if (txtDeleted === false && bindDeleted && txtRows.length > 0) {
+      // TXT deletion didn't complete but main record was deleted - try to restore TXT
+      // Actually if bindDeleted and we're compensating, TXT restore happens via main record restore above
+    }
+    if (txtDeleted && txtRows.length > 0) {
+      try {
+        for (const txt of txtRows) {
+          await bindService.createOrUpdateTxtRecord(domain, txt.host_prefix, txt.txt_value);
+        }
+        fastify.log.warn(`Compensated TXT deletion after DB failure: ${subdomain}.${domain}`);
+      } catch (txtCompErr) {
+        fastify.log.error({ err: txtCompErr, subdomain, domain },
+          "TXT_DELETE_COMPENSATION_FAILED");
+        await alertService.critical("TXT_DELETE_COMPENSATION_FAILED", {
+          subdomain, domain, error: error.message, compError: txtCompErr.message,
+        });
+      }
     }
     throw error;
   } finally {

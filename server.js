@@ -14,11 +14,13 @@ const fastify = require("fastify")({
 const config = require("./configs/index");
 const apiRoutes = require("./routes/index");
 const bindService = require("./services/bind");
+const alertService = require("./services/alert");
 
 // --- 1. Register plugins ---
 fastify.register(require("./plugins/db"));
 fastify.register(require("./plugins/auth"));
 fastify.register(require("./plugins/validation-scheduler"));
+fastify.register(require("./plugins/reconciler"));
 fastify.register(require("@fastify/rate-limit"), {
   global: true,
   max: 100,
@@ -64,6 +66,7 @@ fastify.register(apiRoutes, { prefix: "/api" });
 
 // --- 5. Inject logger into services ---
 bindService.setLogger(fastify.log);
+alertService.setLogger(fastify.log);
 
 // --- 6. Start server ---
 const start = async () => {
