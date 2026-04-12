@@ -13,6 +13,7 @@ const fastify = require("fastify")({
 });
 const config = require("./configs/index");
 const apiRoutes = require("./routes/index");
+const bindService = require("./services/bind");
 
 // --- 1. Register plugins ---
 fastify.register(require("./plugins/db"));
@@ -61,7 +62,10 @@ fastify.setNotFoundHandler((request, reply) => {
 // 4. /api/* requests are handled by routes/index.js
 fastify.register(apiRoutes, { prefix: "/api" });
 
-// --- 5. Start server ---
+// --- 5. Inject logger into services ---
+bindService.setLogger(fastify.log);
+
+// --- 6. Start server ---
 const start = async () => {
   try {
     await fastify.listen({

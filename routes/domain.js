@@ -135,23 +135,34 @@ async function domainRoutes(fastify, options) {
 
       const results = await Promise.all(
         managedDomains.map(async ({ id: domainId, domain }) => {
-          const isTakenInBind = await bindService.findDnsRecord(
-            subdomain,
-            domain
-          );
+          try {
+            const isTakenInBind = await bindService.findDnsRecord(
+              subdomain,
+              domain
+            );
 
-          const [rows] = await fastify.mysql.execute(
-            "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id = ? LIMIT 1",
-            [subdomain, domainId]
-          );
-          const isTakenInDb = rows.length > 0;
+            const [rows] = await fastify.mysql.execute(
+              "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id = ? LIMIT 1",
+              [subdomain, domainId]
+            );
+            const isTakenInDb = rows.length > 0;
 
-          return {
-            domain,
-            subdomain,
-            fullSubdomain: `${subdomain}.${domain}`,
-            isAvailable: !isTakenInBind && !isTakenInDb,
-          };
+            return {
+              domain,
+              subdomain,
+              fullSubdomain: `${subdomain}.${domain}`,
+              isAvailable: !isTakenInBind && !isTakenInDb,
+            };
+          } catch (error) {
+            fastify.log.warn({ err: error, domain }, "Zone check failed for domain");
+            return {
+              domain,
+              subdomain,
+              fullSubdomain: `${subdomain}.${domain}`,
+              available: false,
+              error: "zone_unavailable",
+            };
+          }
         })
       );
 

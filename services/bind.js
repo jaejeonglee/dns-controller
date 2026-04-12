@@ -3,6 +3,9 @@ const util = require("util");
 const execFile = util.promisify(require("child_process").execFile);
 const config = require("../configs/index");
 
+let logger = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {}, fatal: () => {} };
+function setLogger(l) { logger = l; }
+
 const isBindDevMode = Boolean(config.bind.devMode);
 const domainLocks = new Map();
 
@@ -38,8 +41,8 @@ async function reloadBind(domain, zoneFilePath) {
     await execFile("named-checkzone", [domain, zoneFilePath]);
     await execFile("systemctl", ["reload", "named"]);
   } catch (error) {
-    console.error("BIND reload failed:", error);
-    throw new Error("Failed to reload BIND9 service.");
+    logger.error({ err: error }, "BIND reload failed");
+    throw Object.assign(new Error("Failed to reload BIND9 service."), { cause: error });
   }
 }
 
@@ -100,10 +103,9 @@ async function findDnsRecord(subdomain, domain, recordType) {
     data = await fs.readFile(zoneFilePath, "utf8");
   } catch (error) {
     if (error.code === "ENOENT") {
-      console.warn(
-        `Zone file not found for ${domain}. Returning available status (set BIND_DEV_MODE=true to silence this warning).`
-      );
-      return false;
+      // Dev mode already returns false before reaching fs.readFile (line 96).
+      // In production, missing zone file is a hard error (fail-close).
+      throw new Error("Zone file not found for " + domain + " at " + zoneFilePath + ". Check BIND_DB_PATH and zone file permissions.");
     }
     throw error;
   }
@@ -127,9 +129,7 @@ async function createDnsRecord(subdomain, value, domain, recordType = "A") {
     const newRecord = `\n${subdomain}\tIN\t${type}\t${recordValue}`;
 
     if (isBindDevMode) {
-      console.warn(
-        `BIND_DEV_MODE enabled. Skipping zone file write for ${subdomain}.${domain} (${type}).`
-      );
+      logger.debug({ op: "createDnsRecord", subdomain, domain, type }, "BIND_DEV_MODE skip");
     } else {
       try {
         await fs.appendFile(zoneFilePath, newRecord);
@@ -159,9 +159,7 @@ async function updateDnsRecord(subdomain, newValue, domain, recordType = "A") {
     const recordValue = formatRecordValue(type, newValue);
 
     if (isBindDevMode) {
-      console.warn(
-        `BIND_DEV_MODE enabled. Skipping zone file update for ${subdomain}.${domain} (${type}).`
-      );
+      logger.debug({ op: "updateDnsRecord", subdomain, domain, type }, "BIND_DEV_MODE skip");
       return { name: `${subdomain}.${domain}`, content: recordValue, type };
     }
 
@@ -204,9 +202,7 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
     const type = normalizeRecordType(recordType);
 
     if (isBindDevMode) {
-      console.warn(
-        `BIND_DEV_MODE enabled. Skipping zone file delete for ${subdomain}.${domain} (${type}).`
-      );
+      logger.debug({ op: "deleteDnsRecord", subdomain, domain, type }, "BIND_DEV_MODE skip");
       return { name: `${subdomain}.${domain}`, type };
     }
 
@@ -228,7 +224,7 @@ async function deleteDnsRecord(subdomain, domain, recordType = "A") {
     );
 
     if (!regex.test(fileContent)) {
-      throw new Error(`${type} record not found in zone file.`);
+      return { name: `${subdomain}.${domain}`, type, alreadyAbsent: true };
     }
 
     fileContent = fileContent.replace(regex, "");
@@ -248,9 +244,7 @@ async function createOrUpdateTxtRecord(domain, hostPrefix, txtValue) {
     const newRecordLine = `${recordName}\tIN\tTXT\t${recordContent}`;
 
     if (isBindDevMode) {
-      console.warn(
-        `BIND_DEV_MODE enabled. Skipping TXT record update for ${recordName}.${domain}.`
-      );
+      logger.debug({ op: "createOrUpdateTxtRecord", recordName, domain }, "BIND_DEV_MODE skip");
       return { name: `${recordName}.${domain}`, content: txtValue };
     }
 
@@ -294,9 +288,7 @@ async function deleteTxtRecord(subdomain, domain, hostPrefix) {
     const recordName = hostPrefix ? `${hostPrefix}.${subdomain}` : subdomain;
 
     if (isBindDevMode) {
-      console.warn(
-        `BIND_DEV_MODE enabled. Skipping TXT record deletion for ${recordName}.${domain}.`
-      );
+      logger.debug({ op: "deleteTxtRecord", recordName, domain }, "BIND_DEV_MODE skip");
       return { name: `${recordName}.${domain}` };
     }
 
@@ -329,6 +321,7 @@ async function deleteTxtRecord(subdomain, domain, hostPrefix) {
 }
 
 module.exports = {
+  setLogger,
   findDnsRecord,
   createDnsRecord,
   updateDnsRecord,
