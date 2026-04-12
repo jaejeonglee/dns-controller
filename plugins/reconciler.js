@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const bindService = require("../services/bind");
 const alertService = require("../services/alert");
 const { getManagedDomains } = require("../services/managedDomain");
+const config = require("../configs/index");
 
 const RECONCILE_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DEBOUNCE_MS = 10_000; // 10 seconds
@@ -49,10 +50,12 @@ async function computeDiff(fastify, domain, domainId) {
 
   const issues = [];
 
-  // Zone-only: in BIND but not in DB
+  // Zone-only: in BIND but not in DB (skip infrastructure records)
+  const infraSet = new Set(config.infraRecords || []);
   for (const [key, value] of zoneMap) {
     if (!dbMap.has(key)) {
       const [name, type] = key.split("|");
+      if (infraSet.has(name.toLowerCase())) continue;
       issues.push({ type: "zone-only", name, recordType: type, zoneValue: value });
     }
   }

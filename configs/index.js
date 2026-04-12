@@ -81,6 +81,10 @@ module.exports = {
     botToken: process.env.TELEGRAM_BOT_TOKEN,
     alertChatId: process.env.TELEGRAM_ALERT_CHAT_ID,
   },
+  infraRecords: (process.env.INFRA_RECORDS || "ns1,ns2,@,www")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
   server: {
     port: process.env.PORT || 3000,
     host: "0.0.0.0",
