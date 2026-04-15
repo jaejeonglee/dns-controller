@@ -45,6 +45,7 @@ Claude Desktop, Cursor 등의 MCP 설정에 한 줄 추가하면 돼요:
 - "내 서브도메인 목록 보여줘"
 - "demo.sitey.one IP를 5.6.7.8로 바꿔줘"
 - "demo.sitey.one 삭제해줘"
+- "demo.sitey.one을 Vercel에 연결해줘" (CNAME + TXT 자동 생성)
 
 에이전트가 MCP를 통해 자동으로 처리해요. 가입도 필요 없어요.
 
@@ -54,9 +55,25 @@ Claude Desktop, Cursor 등의 MCP 설정에 한 줄 추가하면 돼요:
 |---|---|
 | `check_availability` | 서브도메인 사용 가능 여부 확인 |
 | `create_subdomain` | A 또는 CNAME 레코드 생성 |
+| `create_txt_record` | TXT 레코드 생성 (Vercel, Netlify 등 도메인 인증용) |
+| `delete_txt_record` | TXT 레코드 삭제 |
 | `list_subdomains` | 내가 만든 서브도메인 목록 |
 | `update_subdomain` | 레코드 값 변경 |
 | `delete_subdomain` | 서브도메인 삭제 |
+
+### 4. Vercel 배포 예시
+
+Vercel에 커스텀 도메인을 연결하려면 CNAME + TXT 두 개가 필요해요. 에이전트에게 이렇게 말하면 돼요:
+
+```
+"demo.sitey.one을 Vercel에 연결해줘. CNAME은 cname.vercel-dns.com으로, TXT 인증 토큰은 abc123이야."
+```
+
+에이전트가 자동으로:
+1. `create_subdomain` → demo CNAME cname.vercel-dns.com
+2. `create_txt_record` → _vercel.demo TXT abc123
+
+두 단계를 처리해줘요.
 
 ## 제한 사항
 

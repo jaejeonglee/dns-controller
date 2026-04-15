@@ -55,9 +55,25 @@ sitey.one implements the [Model Context Protocol](https://modelcontextprotocol.i
 |------|-------------|
 | `check_availability` | Check if a subdomain is free |
 | `create_subdomain` | Create A or CNAME record |
+| `create_txt_record` | Create/update TXT record (domain verification) |
+| `delete_txt_record` | Delete a TXT record |
 | `list_subdomains` | List your subdomains |
 | `update_subdomain` | Change record value |
 | `delete_subdomain` | Remove a subdomain |
+
+### Vercel / Netlify Setup
+
+AI agents can fully automate custom domain setup:
+
+```
+"Connect demo.sitey.one to Vercel"
+```
+
+The agent will:
+1. `create_subdomain` → CNAME to `cname.vercel-dns.com`
+2. `create_txt_record` → `_vercel` verification token
+
+No manual DNS configuration needed.
 
 ### Authentication
 
