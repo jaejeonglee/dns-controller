@@ -16,8 +16,10 @@ const alertService = require("./alert");
  * @returns {{ name: string, content: string, type: string }}
  */
 async function createSubdomain(fastify, params) {
-  const { userId, domainId, subdomain, domain, recordValue, recordType } =
-    params;
+  const {
+    userId, domainId, subdomain, domain, recordValue, recordType,
+    ownerType = "user", ownerIp = null,
+  } = params;
 
   const connection = await fastify.mysql.getConnection();
   let bindWritten = false;
@@ -36,8 +38,8 @@ async function createSubdomain(fastify, params) {
 
     await connection.beginTransaction();
     await connection.execute(
-      "INSERT INTO subdomains (user_id, domain_id, subdomain, record_value, record_type) VALUES (?, ?, ?, ?, ?)",
-      [userId, domainId, subdomain, recordValue, recordType]
+      "INSERT INTO subdomains (user_id, domain_id, subdomain, record_value, record_type, owner_type, owner_ip) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [userId, domainId, subdomain, recordValue, recordType, ownerType, ownerIp]
     );
 
     const newRecord = await bindService.createDnsRecord(

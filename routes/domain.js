@@ -3,6 +3,7 @@ const bindService = require("../services/bind");
 const { validateRecord } = require("../services/validation");
 const { createSubdomain, updateSubdomain, deleteSubdomain } = require("../services/subdomain");
 const { getManagedDomains } = require("../services/managedDomain");
+const { isBlacklisted } = require("../services/blacklist");
 
 const SUBDOMAIN_REGEX = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
 const IPV4_REGEX =
@@ -212,6 +213,11 @@ async function domainRoutes(fastify, options) {
       }
       if (!isValidSubdomain(subdomain)) {
         return reply.code(400).send({ error: "Invalid domain format" });
+      }
+
+      const blacklistCheck = isBlacklisted(subdomain);
+      if (blacklistCheck.blocked) {
+        return reply.code(400).send({ error: blacklistCheck.reason });
       }
 
       const managedDomains = await getManagedDomains(fastify);
