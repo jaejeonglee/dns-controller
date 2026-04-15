@@ -22,8 +22,12 @@ Free subdomain service for developers. Get a subdomain in seconds — no credit 
 
 ### For AI agents
 
-Add to your MCP settings:
+**Claude Code** (one line):
+```bash
+claude mcp add --transport http sitey https://sitey.one/mcp
+```
 
+**Claude Desktop / Cursor / Others** — add to MCP settings:
 ```json
 {
   "mcpServers": {
@@ -35,7 +39,6 @@ Add to your MCP settings:
 ```
 
 Then tell your agent:
-
 ```
 "Create demo.sitey.one pointing to 1.2.3.4"
 ```
@@ -53,6 +56,7 @@ sitey.one implements the [Model Context Protocol](https://modelcontextprotocol.i
 
 | Tool | Description |
 |------|-------------|
+| `list_domains` | List available root domains (sitey.one, sitey.my, etc.) |
 | `check_availability` | Check if a subdomain is free |
 | `create_subdomain` | Create A or CNAME record |
 | `create_txt_record` | Create/update TXT record (domain verification) |

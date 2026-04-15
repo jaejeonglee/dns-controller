@@ -23,10 +23,16 @@ MCP(Model Context Protocol)는 AI 에이전트가 외부 서비스에 연결하�
 
 ## 어떻게 쓰나요?
 
-### 1. 에이전트 설정에 추가
+### 1. 에이전트에 연결하기
 
-Claude Desktop, Cursor 등의 MCP 설정에 한 줄 추가하면 돼요:
+**Claude Code (가장 간단):**
+```bash
+claude mcp add --transport http sitey https://sitey.one/mcp
+```
+터미널에서 이 한 줄이면 끝이에요!
 
+**Claude Desktop:**
+설정 파일에 추가:
 ```json
 {
   "mcpServers": {
@@ -36,6 +42,9 @@ Claude Desktop, Cursor 등의 MCP 설정에 한 줄 추가하면 돼요:
   }
 }
 ```
+
+**Cursor:**
+Settings → MCP → Add Server → URL: `https://sitey.one/mcp`
 
 ### 2. 에이전트에게 말하기
 
@@ -53,6 +62,7 @@ Claude Desktop, Cursor 등의 MCP 설정에 한 줄 추가하면 돼요:
 
 | 도구 | 설명 |
 |---|---|
+| `list_domains` | 사용 가능한 루트 도메인 목록 (sitey.one, sitey.my 등) |
 | `check_availability` | 서브도메인 사용 가능 여부 확인 |
 | `create_subdomain` | A 또는 CNAME 레코드 생성 |
 | `create_txt_record` | TXT 레코드 생성 (Vercel, Netlify 등 도메인 인증용) |
