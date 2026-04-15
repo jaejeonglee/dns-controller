@@ -1,25 +1,13 @@
 {
+  "$schema": "https://glama.ai/mcp/schemas/server.json",
+  "maintainers": [
+    "jaejeonglee"
+  ],
   "name": "sitey.one",
   "display_name": "sitey.one — Free Subdomain DNS",
   "description": "Free subdomain DNS service for developers. AI agents can instantly create A/CNAME/TXT records — no signup required. Supports Vercel/Netlify domain verification.",
   "category": "Cloud Platforms",
   "tags": ["dns", "subdomain", "free", "vercel", "deploy", "domain"],
   "repository": "https://github.com/jaejeonglee/dns-controller",
-  "homepage": "https://sitey.one",
-  "mcp_endpoint": "https://sitey.one/mcp",
-  "transport": "streamable-http",
-  "authentication": {
-    "type": "optional",
-    "description": "Anonymous: IP-based, 3 subdomains max. API key: unlimited."
-  },
-  "tools": [
-    { "name": "list_domains", "description": "List available root domains (e.g. sitey.one, sitey.my) that you can create subdomains under." },
-    { "name": "check_availability", "description": "Check if a specific subdomain name is available for registration under a given domain." },
-    { "name": "create_subdomain", "description": "Create a new DNS A or CNAME record for a subdomain. For example, create demo.sitey.one pointing to an IP address or hostname." },
-    { "name": "create_txt_record", "description": "Create or update a TXT record for domain verification (e.g. Vercel _vercel TXT token, Netlify verification)." },
-    { "name": "delete_txt_record", "description": "Delete a TXT verification record from a subdomain." },
-    { "name": "list_subdomains", "description": "List all subdomains owned by the current user (identified by API key or IP address)." },
-    { "name": "update_subdomain", "description": "Update the DNS record value of an existing subdomain you own (e.g. change the IP address)." },
-    { "name": "delete_subdomain", "description": "Permanently delete a subdomain DNS record that you own." }
-  ]
+  "homepage": "https://sitey.one"
 }
