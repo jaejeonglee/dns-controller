@@ -422,6 +422,125 @@ function createMcpServer(fastify) {
     }
   );
 
+  // --- Tool: create_txt_record ---
+  server.tool(
+    "create_txt_record",
+    "Create or update a TXT record (useful for domain verification, e.g. Vercel)",
+    {
+      subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
+      domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
+      host_prefix: z.string().describe("TXT record host prefix (e.g. '_vercel' for Vercel verification)"),
+      value: z.string().describe("TXT record value (the verification token)"),
+    },
+    async ({ subdomain: rawSubdomain, domain: rawDomain, host_prefix: hostPrefix, value: txtValue }, extra) => {
+      const subdomain = (rawSubdomain || "").trim().toLowerCase();
+      const domainName = (rawDomain || "").trim().toLowerCase();
+
+      const auth = extra._meta?.auth;
+      if (!auth) return mcpError("Internal error: auth context missing.");
+      if (auth.mode === "invalid_key") return mcpError("Invalid API key.");
+
+      const managedDomains = await getManagedDomains(fastify);
+      const domainEntry = managedDomains.find((d) => d.normalized === domainName);
+      if (!domainEntry) return mcpError("Domain is not managed by this service.");
+
+      // Verify ownership: user must own the subdomain to add TXT
+      let record;
+      if (auth.mode === "apikey") {
+        const [rows] = await fastify.mysql.execute(
+          "SELECT id FROM subdomains WHERE subdomain = ? AND domain_id = ? AND user_id = ?",
+          [subdomain, domainEntry.id, auth.userId]
+        );
+        record = rows[0];
+      } else {
+        const [rows] = await fastify.mysql.execute(
+          "SELECT id FROM subdomains WHERE subdomain = ? AND domain_id = ? AND owner_ip = ? AND owner_type = 'agent'",
+          [subdomain, domainEntry.id, auth.ip]
+        );
+        record = rows[0];
+      }
+
+      if (!record) {
+        return mcpError("You must own the subdomain before adding TXT records. Create the subdomain first.");
+      }
+
+      if (!hostPrefix || !txtValue) {
+        return mcpError("host_prefix and value are required.");
+      }
+
+      try {
+        const fullPrefix = `${hostPrefix}.${subdomain}`;
+        await bindService.createOrUpdateTxtRecord(domainEntry.domain, fullPrefix, txtValue);
+        return mcpSuccess({
+          success: true,
+          record: `${fullPrefix}.${domainEntry.domain}`,
+          type: "TXT",
+          value: txtValue,
+        });
+      } catch (error) {
+        fastify.log.error(error, "MCP create_txt_record failed");
+        return mcpError("Server error during TXT record creation.");
+      }
+    }
+  );
+
+  // --- Tool: delete_txt_record ---
+  server.tool(
+    "delete_txt_record",
+    "Delete a TXT record",
+    {
+      subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
+      domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
+      host_prefix: z.string().describe("TXT record host prefix (e.g. '_vercel')"),
+    },
+    async ({ subdomain: rawSubdomain, domain: rawDomain, host_prefix: hostPrefix }, extra) => {
+      const subdomain = (rawSubdomain || "").trim().toLowerCase();
+      const domainName = (rawDomain || "").trim().toLowerCase();
+
+      const auth = extra._meta?.auth;
+      if (!auth) return mcpError("Internal error: auth context missing.");
+      if (auth.mode === "invalid_key") return mcpError("Invalid API key.");
+
+      const managedDomains = await getManagedDomains(fastify);
+      const domainEntry = managedDomains.find((d) => d.normalized === domainName);
+      if (!domainEntry) return mcpError("Domain is not managed by this service.");
+
+      // Verify ownership
+      let record;
+      if (auth.mode === "apikey") {
+        const [rows] = await fastify.mysql.execute(
+          "SELECT id FROM subdomains WHERE subdomain = ? AND domain_id = ? AND user_id = ?",
+          [subdomain, domainEntry.id, auth.userId]
+        );
+        record = rows[0];
+      } else {
+        const [rows] = await fastify.mysql.execute(
+          "SELECT id FROM subdomains WHERE subdomain = ? AND domain_id = ? AND owner_ip = ? AND owner_type = 'agent'",
+          [subdomain, domainEntry.id, auth.ip]
+        );
+        record = rows[0];
+      }
+
+      if (!record) {
+        return mcpError("Subdomain not found or you don't have permission.");
+      }
+
+      try {
+        const fullPrefix = `${hostPrefix}.${subdomain}`;
+        await bindService.deleteTxtRecord(subdomain, domainEntry.domain, hostPrefix);
+        return mcpSuccess({
+          success: true,
+          record: `${fullPrefix}.${domainEntry.domain}`,
+          type: "TXT",
+          deleted: true,
+        });
+      } catch (error) {
+        fastify.log.error(error, "MCP delete_txt_record failed");
+        return mcpError("Server error during TXT record deletion.");
+      }
+    }
+  );
+
   return server;
 }
 
