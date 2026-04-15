@@ -2,82 +2,25 @@
 
 Free subdomain service for developers. Get a subdomain in seconds — no credit card, no hassle.
 
-> **NEW**: AI agents can now create subdomains via [MCP](#-mcp-for-ai-agents). Just connect `https://sitey.one/mcp` to your agent.
-
 ## Features
 
-- **Instant DNS** — A and CNAME records, live in seconds
+- **Instant DNS** — A, CNAME, and TXT records, live in seconds
 - **Google sign-in** — No passwords to manage
-- **MCP support** — AI agents (Claude, Cursor, etc.) can create subdomains automatically
+- **REST API** — Programmatic access via /api/v1/
 - **Auto-cleanup** — Unreachable subdomains are removed after two warnings
 - **Free** — No cost, no catch
 
 ## Quick Start
 
-### For humans
-
 1. Visit [sitey.one](https://sitey.one)
 2. Sign in with Google
 3. Type a subdomain + IP address → done
 
-### For AI agents
+## REST API
 
-**Claude Code** (one line):
-```bash
-claude mcp add --transport http sitey https://sitey.one/mcp
-```
+Programmatic access for developers and AI agents.
 
-**Claude Desktop / Cursor / Others** — add to MCP settings:
-```json
-{
-  "mcpServers": {
-    "sitey": {
-      "url": "https://sitey.one/mcp"
-    }
-  }
-}
-```
-
-Then tell your agent:
-```
-"Create demo.sitey.one pointing to 1.2.3.4"
-```
-
-No sign-up needed. IP-based limit: 3 subdomains. Sign in for unlimited + API key.
-
-## 🤖 MCP for AI Agents
-
-sitey.one implements the [Model Context Protocol](https://modelcontextprotocol.io) so AI agents can manage DNS records programmatically.
-
-**Endpoint:** `https://sitey.one/mcp`
-**Discovery:** `https://sitey.one/.well-known/mcp.json`
-
-### Tools
-
-| Tool | Description |
-|------|-------------|
-| `list_domains` | List available root domains (sitey.one, sitey.my, etc.) |
-| `check_availability` | Check if a subdomain is free |
-| `create_subdomain` | Create A or CNAME record |
-| `create_txt_record` | Create/update TXT record (domain verification) |
-| `delete_txt_record` | Delete a TXT record |
-| `list_subdomains` | List your subdomains |
-| `update_subdomain` | Change record value |
-| `delete_subdomain` | Remove a subdomain |
-
-### Vercel / Netlify Setup
-
-AI agents can fully automate custom domain setup:
-
-```
-"Connect demo.sitey.one to Vercel"
-```
-
-The agent will:
-1. `create_subdomain` → CNAME to `cname.vercel-dns.com`
-2. `create_txt_record` → `_vercel` verification token
-
-No manual DNS configuration needed.
+**Base URL:** `https://sitey.one/api/v1`
 
 ### Authentication
 
@@ -88,19 +31,51 @@ No manual DNS configuration needed.
 
 Get an API key: sign in at sitey.one → Dashboard → API Keys.
 
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /domains | List available root domains |
+| GET | /check/:subdomain/:domain | Check availability |
+| POST | /subdomains | Create A or CNAME record |
+| GET | /subdomains | List your subdomains |
+| PATCH | /subdomains/:sub/:domain | Update record value |
+| DELETE | /subdomains/:sub/:domain | Delete subdomain |
+| POST | /subdomains/:sub/:domain/txt | Create/update TXT record |
+| DELETE | /subdomains/:sub/:domain/txt/:prefix | Delete TXT record |
+
+### Example
+
+```bash
+# Check availability
+curl https://sitey.one/api/v1/check/demo/sitey.one
+
+# Create subdomain
+curl -X POST https://sitey.one/api/v1/subdomains \
+  -H "Content-Type: application/json" \
+  -d '{"subdomain":"demo","domain":"sitey.one","type":"A","value":"1.2.3.4"}'
+```
+
+### For AI Agents (MCP)
+
+AI agents can use [free-domain-mcp](https://github.com/jaejeonglee/free-domain-mcp) — an MCP server that wraps this REST API.
+
+```bash
+claude mcp add --transport http sitey https://your-mcp-server/mcp
+```
+
 ## Tech Stack
 
 - **Runtime**: Node.js + Fastify
 - **DNS**: Self-hosted BIND9 (authoritative nameserver)
 - **Database**: MySQL
 - **Auth**: Google OAuth2 + JWT
-- **MCP**: `@modelcontextprotocol/sdk` (Streamable HTTP)
 
 ## How It Works
 
-1. User (or agent) requests a subdomain
+1. User (or API call) requests a subdomain
 2. Server validates input + checks availability
-3. A/CNAME record is appended to the BIND9 zone file
+3. A/CNAME/TXT record is appended to the BIND9 zone file
 4. `named-checkzone` validates → `systemctl reload named` applies
 5. DNS is live within seconds
 
@@ -110,7 +85,7 @@ We run our own authoritative nameservers (`ns1.sitey.one`, `ns2.sitey.one`) — 
 
 - Deploy a side project to `myapp.sitey.one`
 - Give hackathon demos a real URL
-- Let your AI coding agent handle deployment end-to-end
+- Automate domain setup via REST API or MCP
 - Share staging environments with teammates
 
 ## Support
