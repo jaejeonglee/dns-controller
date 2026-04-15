@@ -1,45 +1,103 @@
-# DNS Controller
+# sitey.one
 
-Free subdomain service for the everyone. This project bundles a landing page and a small backend so anyone can instantly claim a subdomain, keep it pointed to an IP address, and manage it later with a password they set.
+Free subdomain service for developers. Get a subdomain in seconds — no credit card, no hassle.
 
-## What It Is For
+> **NEW**: AI agents can now create subdomains via [MCP](#-mcp-for-ai-agents). Just connect `https://sitey.one/mcp` to your agent.
 
-- Give builders, hobbyists, and small communities a no-cost way to publish projects under a shared domain.
-- Remove paperwork: sign in with Google, type a subdomain plus the address you want it to point at, and you're done — no registrar required.
-- Keep ownership simple: each subdomain is tied to your Google account, so you can update or delete it any time you're signed in.
+## Features
+
+- **Instant DNS** — A and CNAME records, live in seconds
+- **Google sign-in** — No passwords to manage
+- **MCP support** — AI agents (Claude, Cursor, etc.) can create subdomains automatically
+- **Auto-cleanup** — Unreachable subdomains are removed after two warnings
+- **Free** — No cost, no catch
+
+## Quick Start
+
+### For humans
+
+1. Visit [sitey.one](https://sitey.one)
+2. Sign in with Google
+3. Type a subdomain + IP address → done
+
+### For AI agents
+
+Add to your MCP settings:
+
+```json
+{
+  "mcpServers": {
+    "sitey": {
+      "url": "https://sitey.one/mcp"
+    }
+  }
+}
+```
+
+Then tell your agent:
+
+```
+"Create demo.sitey.one pointing to 1.2.3.4"
+```
+
+No sign-up needed. IP-based limit: 3 subdomains. Sign in for unlimited + API key.
+
+## 🤖 MCP for AI Agents
+
+sitey.one implements the [Model Context Protocol](https://modelcontextprotocol.io) so AI agents can manage DNS records programmatically.
+
+**Endpoint:** `https://sitey.one/mcp`
+**Discovery:** `https://sitey.one/.well-known/mcp.json`
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `check_availability` | Check if a subdomain is free |
+| `create_subdomain` | Create A or CNAME record |
+| `list_subdomains` | List your subdomains |
+| `update_subdomain` | Change record value |
+| `delete_subdomain` | Remove a subdomain |
+
+### Authentication
+
+| Mode | Auth | Limit |
+|------|------|-------|
+| Anonymous | None (IP-based) | 3 subdomains |
+| API key | `Authorization: Bearer styo_xxx` | Unlimited |
+
+Get an API key: sign in at sitey.one → Dashboard → API Keys.
+
+## Tech Stack
+
+- **Runtime**: Node.js + Fastify
+- **DNS**: Self-hosted BIND9 (authoritative nameserver)
+- **Database**: MySQL
+- **Auth**: Google OAuth2 + JWT
+- **MCP**: `@modelcontextprotocol/sdk` (Streamable HTTP)
 
 ## How It Works
 
-1. You sign in with your Google account so we know who owns each subdomain.
-2. You check if a subdomain like `demo.sitey.one` is free.
-3. When you create it, the app appends an `A` (or `CNAME`) record to the BIND9 zone file we operate, increments the zone serial, and reloads BIND with `named-checkconf` / `named-checkzone` / `systemctl reload named` so the new record is served immediately.
-4. Ownership and metadata (which Google account owns which subdomain, when it was last validated, etc.) are stored in MySQL.
-5. Whenever you change or delete the subdomain, the app verifies that you own it via your session, then updates or removes the matching record in the same zone file.
+1. User (or agent) requests a subdomain
+2. Server validates input + checks availability
+3. A/CNAME record is appended to the BIND9 zone file
+4. `named-checkzone` validates → `systemctl reload named` applies
+5. DNS is live within seconds
 
-This means we run our own authoritative BIND9 nameserver on the same host as the app — we are not delegating to a managed DNS provider like Cloudflare or Route53. The only manual setup is on the operator side (BIND9 + zone file permissions + a `systemd` service named `named`).
-
-## How to Use It
-
-- **Sign in**: Click "Sign in with Google" and grant the basic profile/email scope. Your account becomes the owner of any subdomain you claim afterwards.
-- **Claim**: Type a subdomain, supply the IPv4 address (`A`) or hostname (`CNAME`) you want it to point at, and hit create. The record is written to the zone file and served by BIND9 within seconds.
-- **Update**: Pick one of your existing subdomains from the dashboard and provide the new value. Ownership is enforced server-side via your session.
-- **Delete**: Pick one of your existing subdomains and request deletion to remove it from both the database and the zone file.
-- **Check activity**: The landing page shows a live counter of active subdomains so you can gauge overall usage.
-
-A background validator periodically checks that each registered subdomain is still reachable. After two consecutive failures the owner gets a warning email and the record is removed automatically — this keeps the shared namespace from filling up with dead pointers.
+We run our own authoritative nameservers (`ns1.sitey.one`, `ns2.sitey.one`) — no third-party DNS provider.
 
 ## Use Cases
 
-- Launch a staging site with a memorable address without paying for a new domain.
-- Share workshop, hackathon, or study project demos with teammates under one branded namespace.
-- Spin up temporary mirrors or short-lived campaigns where owning a domain would be overkill.
-- Provide community members with personal pages while centrally managing the root domain.
+- Deploy a side project to `myapp.sitey.one`
+- Give hackathon demos a real URL
+- Let your AI coding agent handle deployment end-to-end
+- Share staging environments with teammates
 
-## Support & Appreciation
+## Support
 
-- Found this useful? You can fuel the next improvement by buying a coffee: https://www.buymeacoffee.com/helpmeup
-- Need help or want to report a bug? Reach out via `https://t.me/+yvrIFDbssJ0wNDJl`.
+- ☕ [Buy me a coffee](https://www.buymeacoffee.com/helpmeup)
+- 💬 [Telegram community](https://t.me/+yvrIFDbssJ0wNDJl)
 
 ## License
 
-Released under the [ISC License](LICENSE).
+[ISC](LICENSE)
