@@ -131,7 +131,7 @@ function createMcpServer(fastify) {
   // --- Tool: list_domains ---
   server.tool(
     "list_domains",
-    "List available root domains you can create subdomains under",
+    "List available root domains (e.g. sitey.one, sitey.my) that you can create subdomains under. Call this first to know which domains are available.",
     {},
     async () => {
       const managedDomains = await getManagedDomains(fastify);
@@ -143,7 +143,7 @@ function createMcpServer(fastify) {
   // --- Tool: check_availability ---
   server.tool(
     "check_availability",
-    "Check if a subdomain is available for registration",
+    "Check if a specific subdomain name is available for registration under a given domain. Returns true if the name is free to claim.",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
@@ -181,7 +181,7 @@ function createMcpServer(fastify) {
   // --- Tool: create_subdomain ---
   server.tool(
     "create_subdomain",
-    "Create a new subdomain DNS record (A or CNAME)",
+    "Create a new DNS record for a subdomain. Supports A records (IP address) and CNAME records (hostname). Example: create demo.sitey.one pointing to 1.2.3.4",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
@@ -270,7 +270,7 @@ function createMcpServer(fastify) {
   // --- Tool: list_subdomains ---
   server.tool(
     "list_subdomains",
-    "List subdomains owned by the current user/IP",
+    "List all subdomains you own. Returns subdomain name, domain, record type, value, and creation date. Filtered by your API key or IP address.",
     {},
     async (_, extra) => {
       const auth = extra._meta?.auth;
@@ -297,7 +297,7 @@ function createMcpServer(fastify) {
   // --- Tool: update_subdomain ---
   server.tool(
     "update_subdomain",
-    "Update the value of an existing subdomain record",
+    "Update the DNS record value of a subdomain you own. For example, change the IP address that demo.sitey.one points to.",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
@@ -374,7 +374,7 @@ function createMcpServer(fastify) {
   // --- Tool: delete_subdomain ---
   server.tool(
     "delete_subdomain",
-    "Delete an existing subdomain record",
+    "Permanently delete a subdomain DNS record you own. The subdomain will stop resolving immediately.",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
@@ -437,7 +437,7 @@ function createMcpServer(fastify) {
   // --- Tool: create_txt_record ---
   server.tool(
     "create_txt_record",
-    "Create or update a TXT record (useful for domain verification, e.g. Vercel)",
+    "Create or update a TXT record for domain verification. Used for services like Vercel (_vercel) and Netlify that require DNS-based ownership proof.",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
@@ -499,7 +499,7 @@ function createMcpServer(fastify) {
   // --- Tool: delete_txt_record ---
   server.tool(
     "delete_txt_record",
-    "Delete a TXT record",
+    "Delete a TXT verification record from a subdomain you own.",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
