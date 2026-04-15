@@ -3,6 +3,7 @@ const userRoutes = require("./user.js");
 const domainRoutes = require("./domain.js");
 const blogRoutes = require("./blog.js");
 const apiKeyRoutes = require("./api-key.js");
+const apiV1Routes = require("./api-v1.js");
 const privacyPolicy = require("../configs/privacyPolicy");
 
 /**
@@ -20,6 +21,9 @@ async function apiRoutes(fastify, options) {
 
   // 2c. Register API key routes
   fastify.register(apiKeyRoutes);
+
+  // 2d. Register REST API v1 routes (/api/v1/*)
+  fastify.register(apiV1Routes, { prefix: "/v1" });
 
   // 3. Register /api/policies/privacy route
   fastify.get("/policies/privacy", async (request, reply) => {

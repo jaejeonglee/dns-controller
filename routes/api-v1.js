@@ -1,0 +1,408 @@
+// routes/api-v1.js — REST API /api/v1/ (external, API key + anonymous IP auth)
+const bindService = require("../services/bind");
+const { validateRecord } = require("../services/validation");
+const { createSubdomain, updateSubdomain, deleteSubdomain } = require("../services/subdomain");
+const { getManagedDomains } = require("../services/managedDomain");
+const { isBlacklisted } = require("../services/blacklist");
+const { hashKey, validateKey } = require("../services/api-key");
+const {
+  isValidSubdomain,
+  validateRecordValue,
+  validateTxtValue,
+} = require("../utils/validators");
+
+const IP_SUBDOMAIN_LIMIT = 3;
+
+/**
+ * Extract client IP from Fastify request
+ */
+function getClientIp(request) {
+  return (
+    request.headers["cf-connecting-ip"] ||
+    request.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
+    request.ip
+  );
+}
+
+/**
+ * Resolve auth context from Authorization header
+ * Returns: { mode: "apikey", userId, email, name }
+ *        | { mode: "ip", ip }
+ *        | { mode: "invalid_key" }
+ */
+async function resolveAuth(fastify, request) {
+  const authHeader = request.headers["authorization"];
+  if (authHeader && authHeader.startsWith("Bearer styo_")) {
+    const rawKey = authHeader.slice(7); // "Bearer ".length
+    const keyHash = hashKey(rawKey);
+    const user = await validateKey(fastify, keyHash);
+    if (!user) {
+      return { mode: "invalid_key" };
+    }
+    return { mode: "apikey", userId: user.user_id, email: user.email, name: user.name };
+  }
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    // Has a Bearer token but not styo_ prefix — invalid
+    return { mode: "invalid_key" };
+  }
+  return { mode: "ip", ip: getClientIp(request) };
+}
+
+/**
+ * Build success response
+ */
+function ok(data) {
+  return { success: true, data };
+}
+
+/**
+ * Build error and throw
+ */
+function apiError(statusCode, message, code) {
+  const err = Object.assign(new Error(message), { statusCode });
+  err.apiCode = code;
+  throw err;
+}
+
+/**
+ * Resolve managed domain entry or throw
+ */
+async function resolveDomain(fastify, rawDomain) {
+  const domainName = (rawDomain || "").trim().toLowerCase();
+  const managedDomains = await getManagedDomains(fastify);
+  const entry = managedDomains.find((d) => d.normalized === domainName);
+  if (!entry) {
+    apiError(400, "Domain is not managed by this service.", "INVALID_DOMAIN");
+  }
+  return entry;
+}
+
+async function apiV1Routes(fastify, options) {
+  // --- Auth preHandler ---
+  fastify.addHook("preHandler", async (request, reply) => {
+    const auth = await resolveAuth(fastify, request);
+    if (auth.mode === "invalid_key") {
+      return reply.code(401).send({
+        error: true,
+        message: "Invalid API key.",
+        code: "UNAUTHORIZED",
+      });
+    }
+    request.apiAuth = auth;
+  });
+
+  // --- Error handler: format errors as { error, message, code } ---
+  fastify.setErrorHandler((error, request, reply) => {
+    const statusCode = error.statusCode || 500;
+    if (statusCode >= 500) {
+      fastify.log.error(error);
+    }
+    return reply.code(statusCode).send({
+      error: true,
+      message: error.message || "Internal server error",
+      code: error.apiCode || (statusCode === 429 ? "RATE_LIMITED" : "INTERNAL_ERROR"),
+    });
+  });
+
+  // -------------------------------------------------------
+  // GET /domains — list managed domains
+  // -------------------------------------------------------
+  fastify.get("/domains", async (request, reply) => {
+    const managedDomains = await getManagedDomains(fastify);
+    return ok({ domains: managedDomains.map((d) => d.domain) });
+  });
+
+  // -------------------------------------------------------
+  // GET /check/:subdomain/:domain — check availability
+  // -------------------------------------------------------
+  fastify.get("/check/:subdomain/:domain", async (request, reply) => {
+    const subdomain = (request.params.subdomain || "").trim().toLowerCase();
+    const domainEntry = await resolveDomain(fastify, request.params.domain);
+
+    if (!subdomain || !isValidSubdomain(subdomain)) {
+      apiError(400, "Invalid subdomain format.", "INVALID_SUBDOMAIN");
+    }
+
+    const isTakenInBind = await bindService.findDnsRecord(subdomain, domainEntry.domain);
+    const [rows] = await fastify.mysql.execute(
+      "SELECT 1 FROM subdomains WHERE subdomain = ? AND domain_id = ? LIMIT 1",
+      [subdomain, domainEntry.id]
+    );
+    const available = !isTakenInBind && rows.length === 0;
+
+    return ok({
+      available,
+      subdomain,
+      domain: domainEntry.domain,
+      fqdn: `${subdomain}.${domainEntry.domain}`,
+    });
+  });
+
+  // -------------------------------------------------------
+  // POST /subdomains — create subdomain
+  // -------------------------------------------------------
+  fastify.post("/subdomains", async (request, reply) => {
+    const auth = request.apiAuth;
+    const { subdomain: rawSubdomain, domain: rawDomain, type: rawType = "A", value: rawValue } = request.body || {};
+    const subdomain = (rawSubdomain || "").trim().toLowerCase();
+    const recordType = bindService.normalizeRecordType(rawType);
+
+    if (!subdomain || !isValidSubdomain(subdomain)) {
+      apiError(400, "Invalid subdomain format.", "INVALID_SUBDOMAIN");
+    }
+
+    if (!rawValue) {
+      apiError(400, "Record value is required.", "INVALID_INPUT");
+    }
+
+    const blacklistCheck = isBlacklisted(subdomain);
+    if (blacklistCheck.blocked) {
+      apiError(400, blacklistCheck.reason, "BLACKLISTED");
+    }
+
+    const domainEntry = await resolveDomain(fastify, rawDomain);
+
+    const validation = validateRecordValue(recordType, rawValue, {
+      subdomain,
+      domain: domainEntry.domain,
+    });
+    if (!validation.valid) {
+      apiError(400, validation.message, "INVALID_INPUT");
+    }
+    const recordValue = validation.value;
+
+    // IP limit for anonymous mode
+    if (auth.mode === "ip") {
+      const [countRows] = await fastify.mysql.execute(
+        "SELECT COUNT(*) AS cnt FROM subdomains WHERE owner_ip = ? AND owner_type = 'agent'",
+        [auth.ip]
+      );
+      if (countRows[0].cnt >= IP_SUBDOMAIN_LIMIT) {
+        apiError(403, `Anonymous limit reached (${IP_SUBDOMAIN_LIMIT} subdomains per IP). Get an API key at sitey.one for unlimited access.`, "LIMIT_REACHED");
+      }
+    }
+
+    // Reachability validation
+    const isReachable = await validateRecord(recordType, recordValue);
+    if (!isReachable) {
+      const msg = recordType === "A"
+        ? `Target IP ${recordValue} is not reachable on port 80 or 443.`
+        : `Target domain ${recordValue} does not resolve to any address.`;
+      apiError(400, msg, "VALIDATION_UNREACHABLE");
+    }
+
+    try {
+      const newRecord = await createSubdomain(fastify, {
+        userId: auth.mode === "apikey" ? auth.userId : null,
+        domainId: domainEntry.id,
+        subdomain,
+        domain: domainEntry.domain,
+        recordValue,
+        recordType,
+        ownerType: auth.mode === "apikey" ? "user" : "agent",
+        ownerIp: auth.mode === "ip" ? auth.ip : null,
+      });
+
+      reply.code(201);
+      return ok({
+        fqdn: newRecord.name,
+        type: recordType,
+        value: recordValue,
+      });
+    } catch (error) {
+      if (error.statusCode === 409) {
+        apiError(409, "This subdomain is already in use.", "SUBDOMAIN_TAKEN");
+      }
+      throw error;
+    }
+  });
+
+  // -------------------------------------------------------
+  // GET /subdomains — list user's subdomains
+  // -------------------------------------------------------
+  fastify.get("/subdomains", async (request, reply) => {
+    const auth = request.apiAuth;
+
+    let rows;
+    if (auth.mode === "apikey") {
+      [rows] = await fastify.mysql.execute(
+        "SELECT s.subdomain, m.domain_name AS domain, s.record_type AS type, s.record_value AS value, s.created_at " +
+        "FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id " +
+        "WHERE s.user_id = ? ORDER BY s.created_at DESC",
+        [auth.userId]
+      );
+    } else {
+      [rows] = await fastify.mysql.execute(
+        "SELECT s.subdomain, m.domain_name AS domain, s.record_type AS type, s.record_value AS value, s.created_at " +
+        "FROM subdomains s JOIN managed_domains m ON s.domain_id = m.id " +
+        "WHERE s.owner_ip = ? AND s.owner_type = 'agent' ORDER BY s.created_at DESC",
+        [auth.ip]
+      );
+    }
+
+    return ok({ subdomains: rows });
+  });
+
+  // -------------------------------------------------------
+  // PATCH /subdomains/:subdomain/:domain — update
+  // -------------------------------------------------------
+  fastify.patch("/subdomains/:subdomain/:domain", async (request, reply) => {
+    const auth = request.apiAuth;
+    const subdomain = (request.params.subdomain || "").trim().toLowerCase();
+    const domainEntry = await resolveDomain(fastify, request.params.domain);
+    const { value: rawValue } = request.body || {};
+
+    if (!rawValue) {
+      apiError(400, "Record value is required.", "INVALID_INPUT");
+    }
+
+    // Ownership check
+    const record = await findOwnedRecord(fastify, auth, subdomain, domainEntry);
+
+    const recordType = bindService.normalizeRecordType(record.record_type);
+    const validation = validateRecordValue(recordType, rawValue, {
+      subdomain,
+      domain: domainEntry.domain,
+    });
+    if (!validation.valid) {
+      apiError(400, validation.message, "INVALID_INPUT");
+    }
+    const recordValue = validation.value;
+
+    // Reachability
+    const isReachable = await validateRecord(recordType, recordValue);
+    if (!isReachable) {
+      const msg = recordType === "A"
+        ? `Target IP ${recordValue} is not reachable on port 80 or 443.`
+        : `Target domain ${recordValue} does not resolve to any address.`;
+      apiError(400, msg, "VALIDATION_UNREACHABLE");
+    }
+
+    await updateSubdomain(fastify, {
+      recordId: record.id,
+      subdomain,
+      domain: domainEntry.domain,
+      recordValue,
+      recordType,
+    });
+
+    return ok({
+      fqdn: `${subdomain}.${domainEntry.domain}`,
+      type: recordType,
+      value: recordValue,
+    });
+  });
+
+  // -------------------------------------------------------
+  // DELETE /subdomains/:subdomain/:domain — delete
+  // -------------------------------------------------------
+  fastify.delete("/subdomains/:subdomain/:domain", async (request, reply) => {
+    const auth = request.apiAuth;
+    const subdomain = (request.params.subdomain || "").trim().toLowerCase();
+    const domainEntry = await resolveDomain(fastify, request.params.domain);
+
+    const record = await findOwnedRecord(fastify, auth, subdomain, domainEntry);
+    const recordType = bindService.normalizeRecordType(record.record_type);
+
+    await deleteSubdomain(fastify, {
+      recordId: record.id,
+      subdomain,
+      domain: domainEntry.domain,
+      recordType,
+    });
+
+    return ok({ fqdn: `${subdomain}.${domainEntry.domain}`, deleted: true });
+  });
+
+  // -------------------------------------------------------
+  // POST /subdomains/:subdomain/:domain/txt — create/update TXT
+  // -------------------------------------------------------
+  fastify.post("/subdomains/:subdomain/:domain/txt", async (request, reply) => {
+    const auth = request.apiAuth;
+    const subdomain = (request.params.subdomain || "").trim().toLowerCase();
+    const domainEntry = await resolveDomain(fastify, request.params.domain);
+    const { host_prefix: hostPrefix, value: rawTxtValue } = request.body || {};
+
+    if (!hostPrefix || !rawTxtValue) {
+      apiError(400, "host_prefix and value are required.", "INVALID_INPUT");
+    }
+
+    const txtValidation = validateTxtValue(rawTxtValue);
+    if (!txtValidation.valid) {
+      apiError(400, txtValidation.message, "INVALID_INPUT");
+    }
+    const sanitizedTxtValue = txtValidation.value;
+
+    // Ownership of parent subdomain
+    const record = await findOwnedRecord(fastify, auth, subdomain, domainEntry);
+
+    // DB + BIND
+    const fullPrefix = `${hostPrefix}.${subdomain}`;
+    await bindService.createOrUpdateTxtRecord(domainEntry.domain, fullPrefix, sanitizedTxtValue);
+    await fastify.mysql.execute(
+      "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) " +
+      "ON DUPLICATE KEY UPDATE txt_value = VALUES(txt_value)",
+      [record.id, hostPrefix, sanitizedTxtValue]
+    );
+
+    fastify.log.info(`TXT record created/updated via API: ${fullPrefix}.${domainEntry.domain}`);
+    return ok({
+      fqdn: `${fullPrefix}.${domainEntry.domain}`,
+      type: "TXT",
+      value: sanitizedTxtValue,
+    });
+  });
+
+  // -------------------------------------------------------
+  // DELETE /subdomains/:subdomain/:domain/txt/:hostPrefix — delete TXT
+  // -------------------------------------------------------
+  fastify.delete("/subdomains/:subdomain/:domain/txt/:hostPrefix", async (request, reply) => {
+    const auth = request.apiAuth;
+    const subdomain = (request.params.subdomain || "").trim().toLowerCase();
+    const domainEntry = await resolveDomain(fastify, request.params.domain);
+    const hostPrefix = request.params.hostPrefix;
+
+    // Ownership of parent subdomain
+    const record = await findOwnedRecord(fastify, auth, subdomain, domainEntry);
+
+    // DB + BIND
+    await bindService.deleteTxtRecord(subdomain, domainEntry.domain, hostPrefix);
+    await fastify.mysql.execute(
+      "DELETE FROM subdomain_txt_records WHERE subdomain_id = ? AND host_prefix = ?",
+      [record.id, hostPrefix]
+    );
+
+    fastify.log.info(`TXT record deleted via API: ${hostPrefix}.${subdomain}.${domainEntry.domain}`);
+    return ok({
+      fqdn: `${hostPrefix}.${subdomain}.${domainEntry.domain}`,
+      type: "TXT",
+      deleted: true,
+    });
+  });
+}
+
+/**
+ * Find a subdomain record owned by the current auth context.
+ * Throws 403 FORBIDDEN if not found.
+ */
+async function findOwnedRecord(fastify, auth, subdomain, domainEntry) {
+  let rows;
+  if (auth.mode === "apikey") {
+    [rows] = await fastify.mysql.execute(
+      "SELECT id, record_type FROM subdomains WHERE subdomain = ? AND domain_id = ? AND user_id = ?",
+      [subdomain, domainEntry.id, auth.userId]
+    );
+  } else {
+    [rows] = await fastify.mysql.execute(
+      "SELECT id, record_type FROM subdomains WHERE subdomain = ? AND domain_id = ? AND owner_ip = ? AND owner_type = 'agent'",
+      [subdomain, domainEntry.id, auth.ip]
+    );
+  }
+
+  if (!rows[0]) {
+    apiError(403, "Subdomain not found or you do not have permission.", "FORBIDDEN");
+  }
+  return rows[0];
+}
+
+module.exports = apiV1Routes;
