@@ -128,6 +128,18 @@ function createMcpServer(fastify) {
     version: "1.0.0",
   });
 
+  // --- Tool: list_domains ---
+  server.tool(
+    "list_domains",
+    "List available root domains you can create subdomains under",
+    {},
+    async () => {
+      const managedDomains = await getManagedDomains(fastify);
+      const domains = managedDomains.map((d) => d.domain);
+      return mcpSuccess({ domains, hint: "Use one of these as the 'domain' parameter when creating subdomains." });
+    }
+  );
+
   // --- Tool: check_availability ---
   server.tool(
     "check_availability",
