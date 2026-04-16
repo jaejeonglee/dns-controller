@@ -21,6 +21,7 @@ fastify.register(require("./plugins/db"));
 fastify.register(require("./plugins/auth"));
 fastify.register(require("./plugins/validation-scheduler"));
 fastify.register(require("./plugins/reconciler"));
+fastify.register(require("./plugins/mcp"));
 fastify.register(require("@fastify/rate-limit"), {
   global: true,
   max: 100,
