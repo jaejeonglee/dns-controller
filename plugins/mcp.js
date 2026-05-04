@@ -437,14 +437,15 @@ function createMcpServer(fastify) {
   // --- Tool: create_txt_record ---
   server.tool(
     "create_txt_record",
-    "Create or update a TXT record for domain verification. Used for services like Vercel (_vercel) and Netlify that require DNS-based ownership proof.",
+    "Create or update a TXT record for domain verification. Used for services like Vercel (_vercel) and Netlify that require DNS-based ownership proof. Set root_level=true for services like Vercel that check TXT at the apex (e.g. _vercel.sitey.one instead of _vercel.demo.sitey.one).",
     {
       subdomain: z.string().describe("Subdomain name (e.g. 'demo')"),
       domain: z.string().describe("Root domain (e.g. 'sitey.one')"),
       host_prefix: z.string().describe("TXT record host prefix (e.g. '_vercel' for Vercel verification)"),
       value: z.string().describe("TXT record value (the verification token)"),
+      root_level: z.boolean().optional().describe("If true, place TXT at root level (e.g. _vercel.sitey.one) instead of subdomain level (e.g. _vercel.demo.sitey.one). Required for Vercel domain verification."),
     },
-    async ({ subdomain: rawSubdomain, domain: rawDomain, host_prefix: hostPrefix, value: txtValue }, extra) => {
+    async ({ subdomain: rawSubdomain, domain: rawDomain, host_prefix: hostPrefix, value: txtValue, root_level: rootLevel }, extra) => {
       const subdomain = (rawSubdomain || "").trim().toLowerCase();
       const domainName = (rawDomain || "").trim().toLowerCase();
 
@@ -481,7 +482,7 @@ function createMcpServer(fastify) {
       }
 
       try {
-        const fullPrefix = `${hostPrefix}.${subdomain}`;
+        const fullPrefix = rootLevel ? hostPrefix : `${hostPrefix}.${subdomain}`;
         await bindService.createOrUpdateTxtRecord(domainEntry.domain, fullPrefix, txtValue);
         return mcpSuccess({
           success: true,

@@ -321,7 +321,7 @@ async function apiV1Routes(fastify, options) {
     const auth = request.apiAuth;
     const subdomain = (request.params.subdomain || "").trim().toLowerCase();
     const domainEntry = await resolveDomain(fastify, request.params.domain);
-    const { host_prefix: hostPrefix, value: rawTxtValue } = request.body || {};
+    const { host_prefix: hostPrefix, value: rawTxtValue, root_level: rootLevel } = request.body || {};
 
     if (!hostPrefix || !rawTxtValue) {
       apiError(400, "host_prefix and value are required.", "INVALID_INPUT");
@@ -337,7 +337,7 @@ async function apiV1Routes(fastify, options) {
     const record = await findOwnedRecord(fastify, auth, subdomain, domainEntry);
 
     // DB + BIND
-    const fullPrefix = `${hostPrefix}.${subdomain}`;
+    const fullPrefix = rootLevel ? hostPrefix : `${hostPrefix}.${subdomain}`;
     await bindService.createOrUpdateTxtRecord(domainEntry.domain, fullPrefix, sanitizedTxtValue);
     await fastify.mysql.execute(
       "INSERT INTO subdomain_txt_records (subdomain_id, host_prefix, txt_value) VALUES (?, ?, ?) " +
